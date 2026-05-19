@@ -9,9 +9,13 @@ import { TenantModule } from './modules/tenant/tenant.module';
 import { EmployeeModule } from './modules/employee/employee.module';
 import { HiringModule } from './modules/hiring/hiring.module';
 import { PreboardingModule } from './modules/preboarding/preboarding.module';
+import { ContractModule } from './modules/contract/contract.module';
+import { LetterModule } from './modules/letter/letter.module';
 import { LegifranceModule } from './integrations/legifrance/legifrance.module';
 import { StorageModule } from './integrations/storage/storage.module';
 import { OcrModule } from './integrations/ocr/ocr.module';
+import { ClaudeModule } from './integrations/claude/claude.module';
+import { SignatureModule } from './integrations/signature/signature.module';
 
 @Module({
   imports: [
@@ -23,12 +27,16 @@ import { OcrModule } from './integrations/ocr/ocr.module';
     PrismaModule,
     StorageModule,
     OcrModule,
+    ClaudeModule,
+    SignatureModule,
     LegifranceModule,
     AuthModule,
     TenantModule,
     EmployeeModule,
     HiringModule,
     PreboardingModule,
+    ContractModule,
+    LetterModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

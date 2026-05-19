@@ -41,6 +41,14 @@ export default function HireDetailPage() {
     } catch (e: any) { alert(e.message); }
   }
 
+  async function generateContract() {
+    try {
+      const c = await api.post('/contracts/generate-from-hire', { hireProcessId: id });
+      await api.patch(`/hire-processes/${id}/advance`, { status: 'contrat_genere' });
+      router.push(`/contracts/${c.id}`);
+    } catch (e: any) { alert('Erreur génération : ' + e.message); }
+  }
+
   function copyLink() {
     if (!p) return;
     const url = `${window.location.origin}/preboarding/${p.token}`;
@@ -88,7 +96,9 @@ export default function HireDetailPage() {
               <button onClick={() => advance('valide')} className="btn btn-primary">Valider les pièces ✓</button>
             )}
             {p.status === 'valide' && (
-              <button onClick={() => advance('contrat_genere')} className="btn btn-primary">Générer le contrat</button>
+              <button onClick={generateContract} className="btn btn-primary">
+                ✨ Générer le contrat avec IA Claude
+              </button>
             )}
             {p.status === 'contrat_genere' && (
               <button onClick={() => advance('contrat_signe')} className="btn btn-primary">Marquer comme signé</button>

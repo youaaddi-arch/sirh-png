@@ -3,9 +3,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Users, Calendar, Clock, Receipt, FileText,
-  GraduationCap, Briefcase, Building2, Settings, Sitemap, Star,
-  UserPlus, BarChart3, Mail, BookOpen,
+  GraduationCap, Briefcase, Building2, Settings, Network, Star,
+  UserPlus, BarChart3, Mail, BookOpen, PenSquare,
 } from 'lucide-react';
+
+const Sitemap = Network;
 
 interface NavItem { href: string; label: string; icon: any; roles?: string[]; }
 
@@ -40,8 +42,9 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
   ]},
   { title: 'Talents', items: [
     { href: '/recruitment', label: 'Recrutement', icon: Briefcase, roles: ['admin','rh','manager'] },
+    { href: '/contracts',   label: 'Contrats',    icon: PenSquare, roles: ['admin','rh'] },
+    { href: '/letters',     label: 'Courriers RH', icon: Mail,     roles: ['admin','rh','manager'] },
     { href: '/documents',   label: 'Documents',   icon: FileText },
-    { href: '/letters',     label: 'Courriers RH', icon: Mail, roles: ['admin','rh','manager'] },
   ]},
   { title: 'Référentiel', items: [
     { href: '/companies', label: 'Sociétés',   icon: Building2, roles: ['admin','rh'] },

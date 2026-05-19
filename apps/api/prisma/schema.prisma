@@ -65,6 +65,9 @@ model Tenant {
   employees       Employee[]
   departments     Department[]
   auditLogs       AuditLog[]
+  hireProcesses   HireProcess[]
+  contracts       Contract[]
+  letters         Letter[]
 }
 
 // ============================================================
@@ -212,6 +215,8 @@ model Employee {
 
   hireProcessesAsManager HireProcess[] @relation("HireProcessManager")
   hireProcessOrigin      HireProcess?  @relation("HireProcessEmployee")
+  contracts              Contract[]
+  letters                Letter[]
 
   @@unique([tenantId, matricule])
   @@index([tenantId])
@@ -335,4 +340,117 @@ model HireProcessDocument {
 
   @@index([hireProcessId])
   @@index([hireProcessId, key])
+}
+
+// ============================================================
+// Contrats de travail (Sprint 3)
+// ============================================================
+
+enum ContractStatus {
+  brouillon          // Généré, pas encore envoyé
+  envoye             // Envoyé pour signature
+  signe_salarie      // Signé par le salarié uniquement
+  signe              // Signé par les deux parties
+  actif              // Contrat actif (post-embauche)
+  termine            // Contrat échu / rompu
+  annule
+}
+
+model Contract {
+  id                  String         @id @default(cuid())
+  tenantId            String
+  tenant              Tenant         @relation(fields: [tenantId], references: [id])
+  employeeId          String?
+  employee            Employee?      @relation(fields: [employeeId], references: [id])
+  hireProcessId       String?
+
+  type                String         @default("CDI")      // CDI / CDD / Alternance / Stage / Freelance
+  position            String
+  statusClass         String                              // Cadre / Agent de maîtrise / Employé
+  classification      String?
+  coefficient         String?
+  weeklyHours         Float          @default(35.0)
+  grossSalary         Float
+  startDate           DateTime
+  endDate             DateTime?
+  trialPeriodDays     Int            @default(0)
+  trialRenewalDays    Int            @default(0)
+  noticeDays          Int            @default(30)
+
+  contentMd           String         @db.Text             // Markdown du contrat
+  contentPdfPath      String?                             // Path du PDF généré
+  generatedByAi       Boolean        @default(false)
+  aiModel             String?
+  aiPromptVersion     String?
+
+  status              ContractStatus @default(brouillon)
+  sentAt              DateTime?
+  signedEmployeeAt    DateTime?
+  signedEmployerAt    DateTime?
+  signedById          String?
+
+  createdById         String?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  signatures          ContractSignature[]
+
+  @@index([tenantId])
+  @@index([employeeId])
+  @@index([status])
+}
+
+model ContractSignature {
+  id            String   @id @default(cuid())
+  contractId    String
+  contract      Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  signerRole    String   // 'employee' | 'employer'
+  signerName    String
+  signerEmail   String
+  signedAt      DateTime @default(now())
+  signedIp      String?
+  signatureData String?  @db.Text  // Base64 ou URL preuve
+
+  @@index([contractId])
+}
+
+// ============================================================
+// Courriers RH (Sprint 3)
+// ============================================================
+
+enum LetterStatus {
+  redige
+  envoye
+  signe
+  archive
+}
+
+model Letter {
+  id              String       @id @default(cuid())
+  tenantId        String
+  tenant          Tenant       @relation(fields: [tenantId], references: [id])
+  employeeId      String?
+  employee        Employee?    @relation(fields: [employeeId], references: [id])
+  hireProcessId   String?
+
+  type            String       // attestation_employeur | certificat_travail | promesse_embauche |
+                               // avertissement | felicitations | rupture_conventionnelle |
+                               // augmentation | convocation_visite_medicale | affiliation_mutuelle | refus_conge
+  subject         String
+  contentMd       String       @db.Text
+  contentPdfPath  String?
+
+  date            DateTime     @default(now())
+  status          LetterStatus @default(redige)
+
+  recipientEmail  String?
+  sentAt          DateTime?
+  signedAt        DateTime?
+
+  createdById     String?
+  createdAt       DateTime     @default(now())
+
+  @@index([tenantId])
+  @@index([employeeId])
+  @@index([type])
 }
