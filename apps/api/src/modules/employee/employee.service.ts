@@ -7,7 +7,7 @@ export class EmployeeService {
 
   list(filters: { tenantId?: string; status?: string; departmentId?: string } = {}) {
     return this.prisma.employee.findMany({
-      where: filters,
+      where: filters as any,
       include: { department: true, manager: { select: { id: true, firstName: true, lastName: true } } },
       orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
     });

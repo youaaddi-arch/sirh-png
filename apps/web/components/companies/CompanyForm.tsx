@@ -11,26 +11,22 @@ interface Props { tenant?: Partial<Tenant>; mode: 'create' | 'edit'; organisatio
 
 export function CompanyForm({ tenant, mode, organisationId }: Props) {
   const router = useRouter();
-  const [data, setData] = useState<any>({
+  const [data, setData] = useState<any>(() => ({
     code: '', name: '', type: 'SIEGE', siren: '', siret: '', address: '',
     apeCode: '', urssafCode: '', urssafName: '',
     repName: '', repRole: '',
     conventionCode: 'IDCC_3249',
-    medicalProvider: {}, healthInsurance: { shareEmployer: 50 },
-    providentInsurance: {}, pensionFund: { name: 'AG2R LA MONDIALE' },
-    workInjuryFund: { name: 'CPAM', rate: 1.20 },
-    apprenticeshipTax: {},
     cseRepresentative: '', safetyOfficer: '',
     active: true,
     organisationId,
-    ...tenant,
+    ...(tenant || {}),
     medicalProvider: tenant?.medicalProvider || {},
     healthInsurance: tenant?.healthInsurance || { shareEmployer: 50 },
     providentInsurance: tenant?.providentInsurance || {},
     pensionFund: tenant?.pensionFund || { name: 'AG2R LA MONDIALE' },
     workInjuryFund: tenant?.workInjuryFund || { name: 'CPAM', rate: 1.20 },
     apprenticeshipTax: tenant?.apprenticeshipTax || {},
-  });
+  }));
   const [conventions, setConventions] = useState<Convention[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');

@@ -56,4 +56,4 @@ export const COMPANIES = [
     {"code":"033-PNLS","name":"PARIS NORD LANGUES ET SERVICES","type":"SIEGE","siren":"100504661","siret":"10050466100016","rep":"DENIZ FINANCES SERVICES","address":"113 AVENUE DU PRESIDENT WILSON, 93210 SAINT-DENIS"},
     {"code":"034-AIMENGLISH","name":"AIMENGLISH","type":"ETS","siren":"848141966","siret":"84814196600020","rep":"RODOLPHE","address":"3 RUE DE GENEVE 69006 LYON"},
     {"code":"035-CHIFFR'ACTIF","name":"CHIFFR'ACTIF","type":"SIEGE","siren":"993750298","siret":"99375029800016","rep":"GÜR Mervé","address":"156 RUE DEPORTES INTERNES RESISTANCE, 45200 MONTARGIS"},
-  ] as const;
+  ];

@@ -57,10 +57,11 @@ export class TimesheetService {
       const [eh, em] = data.endTime.split(':').map(Number);
       hours = Math.max(0, ((eh * 60 + em) - (sh * 60 + sm) - (data.breakMinutes || 0)) / 60);
     }
+    const { date: _omit, ...rest } = data;
     return this.prisma.timesheet.upsert({
       where: { employeeId_date: { employeeId, date } },
-      create: { employeeId, date, ...data, hoursWorked: hours, status: 'en_attente' },
-      update: { ...data, hoursWorked: hours },
+      create: { employeeId, date, ...rest, hoursWorked: hours, status: 'en_attente' },
+      update: { ...rest, hoursWorked: hours },
     });
   }
 
