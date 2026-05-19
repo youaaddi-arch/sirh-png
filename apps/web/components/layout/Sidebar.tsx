@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Users, Calendar, Clock, Receipt, FileText,
   GraduationCap, Briefcase, Building2, Settings, Network, Star,
-  UserPlus, BarChart3, Mail, BookOpen, PenSquare,
+  UserPlus, BarChart3, Mail, BookOpen, PenSquare, AlertCircle,
 } from 'lucide-react';
 
 const Sitemap = Network;
@@ -16,9 +16,10 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
     { href: '/my-space', label: 'Accueil', icon: LayoutDashboard },
   ]},
   { title: 'Pilotage', items: [
-    { href: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard, roles: ['admin','rh','manager','paie'] },
-    { href: '/reports',   label: 'Rapports',        icon: BarChart3, roles: ['admin','rh','manager'] },
-    { href: '/planning',  label: 'Planning équipe', icon: Calendar, roles: ['admin','rh','manager','paie'] },
+    { href: '/dashboard',     label: 'Tableau de bord',  icon: LayoutDashboard, roles: ['admin','rh','manager','paie'] },
+    { href: '/team/pending',  label: 'À valider',         icon: AlertCircle,     roles: ['admin','rh','manager'] },
+    { href: '/team/planning', label: 'Planning équipe',   icon: Calendar,        roles: ['admin','rh','manager'] },
+    { href: '/reports',       label: 'Rapports',          icon: BarChart3,       roles: ['admin','rh','manager'] },
   ]},
   { title: 'Collaborateurs', items: [
     { href: '/employees', label: 'Collaborateurs', icon: Users, roles: ['admin','rh','manager','paie'] },

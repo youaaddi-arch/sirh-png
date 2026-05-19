@@ -16,6 +16,7 @@ import { LeaveModule } from './modules/leave/leave.module';
 import { TimesheetModule } from './modules/timesheet/timesheet.module';
 import { OvertimeModule } from './modules/overtime/overtime.module';
 import { ExpenseModule } from './modules/expense/expense.module';
+import { TeamModule } from './modules/team/team.module';
 import { LegifranceModule } from './integrations/legifrance/legifrance.module';
 import { StorageModule } from './integrations/storage/storage.module';
 import { OcrModule } from './integrations/ocr/ocr.module';
@@ -49,6 +50,7 @@ import { EmailModule } from './integrations/email/email.module';
     TimesheetModule,
     OvertimeModule,
     ExpenseModule,
+    TeamModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
