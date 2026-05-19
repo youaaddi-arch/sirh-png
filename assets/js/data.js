@@ -70,6 +70,16 @@
     code: c.code, name: c.name, type: c.type || 'SIEGE',
     siren: c.siren, siret: c.siret, rep: c.rep, address: c.address,
     active: true,
+    // Organismes obligatoires
+    conventionCode: 'IDCC_3249',
+    medicalProvider: { name: '', address: '', phone: '', email: '' },
+    healthInsurance: { name: '', contractNumber: '', phone: '', shareEmployer: 50 },
+    providentInsurance: { name: '', contractNumber: '', phone: '' },
+    pensionFund: { name: 'AG2R LA MONDIALE', code: '' },
+    workInjuryFund: { name: 'CPAM', rate: 1.20 },
+    apprenticeshipTax: { collector: '', rate: 0.68 },
+    cseRepresentative: '',
+    safetyOfficer: '',
   }));
 
   // Departments
@@ -551,6 +561,7 @@
     documents, payslips, onboardings,
     notifications, holidays,
     contracts, salaryHistory, letters, presences, payrollVariables,
+    hireProcesses: [],
     settings: {
       companyName: 'Paris Nord Groupe',
       slogan: 'L\'éducation au cœur de notre engagement',

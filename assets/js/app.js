@@ -12,6 +12,7 @@ window.App = (function () {
     { section: 'Collaborateurs' },
     { key: 'employees',    href: '#/collaborateurs', label: 'Collaborateurs', icon: 'users',     roles: ['admin','rh','manager','paie'] },
     { key: 'orgchart',     href: '#/organigramme',   label: 'Organigramme',   icon: 'sitemap',   roles: '*' },
+    { key: 'hiring',       href: '#/embauche',       label: 'Embauches',      icon: 'onboard',   roles: ['admin','rh'] },
     { key: 'onboarding',   href: '#/onboarding',     label: 'Onboarding',     icon: 'onboard',   roles: ['admin','rh'] },
 
     { section: 'Temps & absences' },
@@ -63,6 +64,8 @@ window.App = (function () {
     Router.add(/^\/variables-paie$/,           () => renderApp('payroll_vars', PayrollVarsView.render));
     Router.add(/^\/planning$/,                 () => renderApp('planning',   PlanningView.render));
     Router.add(/^\/courriers$/,                () => renderApp('letters',    LettersView.render));
+    Router.add(/^\/embauche$/,                 () => renderApp('hiring',     HiringView.render));
+    Router.add(/^\/pre-embauche\/([^\/]+)$/,   (r) => PreboardingView.render(document.getElementById('app'), r));
     Router.add(/^\/onboarding$/,               () => renderApp('onboarding', OnboardingView.render));
     Router.add(/^\/parametres$/,               () => renderApp('settings',   SettingsView.render));
     // Fallback handled in router
