@@ -7,7 +7,11 @@ import { HealthController } from './modules/health/health.controller';
 import { AuthModule } from './modules/auth/auth.module';
 import { TenantModule } from './modules/tenant/tenant.module';
 import { EmployeeModule } from './modules/employee/employee.module';
+import { HiringModule } from './modules/hiring/hiring.module';
+import { PreboardingModule } from './modules/preboarding/preboarding.module';
 import { LegifranceModule } from './integrations/legifrance/legifrance.module';
+import { StorageModule } from './integrations/storage/storage.module';
+import { OcrModule } from './integrations/ocr/ocr.module';
 
 @Module({
   imports: [
@@ -17,10 +21,14 @@ import { LegifranceModule } from './integrations/legifrance/legifrance.module';
       limit: parseInt(process.env.RATE_LIMIT_LIMIT || '100', 10),
     }]),
     PrismaModule,
-    AuthModule,
+    StorageModule,
+    OcrModule,
     LegifranceModule,
+    AuthModule,
     TenantModule,
     EmployeeModule,
+    HiringModule,
+    PreboardingModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

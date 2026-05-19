@@ -116,9 +116,11 @@ model User {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  employee          Employee?
-  auditLogs         AuditLog[]
-  notifications     Notification[]
+  employee              Employee?
+  auditLogs             AuditLog[]
+  notifications         Notification[]
+  hireProcessesCreated  HireProcess[] @relation("HireProcessCreator")
+  hireProcessesAssigned HireProcess[] @relation("HireProcessAssignee")
 
   @@index([tenantId])
 }
@@ -208,6 +210,9 @@ model Employee {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
+  hireProcessesAsManager HireProcess[] @relation("HireProcessManager")
+  hireProcessOrigin      HireProcess?  @relation("HireProcessEmployee")
+
   @@unique([tenantId, matricule])
   @@index([tenantId])
   @@index([managerId])
@@ -247,4 +252,87 @@ model AuditLog {
 
   @@index([tenantId, at])
   @@index([entityType, entityId])
+}
+
+// ============================================================
+// Workflow d'embauche / Pré-onboarding (Sprint 2)
+// ============================================================
+
+enum HireStatus {
+  pre_embauche       // RH a créé le dossier, lien envoyé au candidat
+  soumis             // Candidat a soumis ses infos et pièces
+  valide             // RH a validé les pièces
+  contrat_genere     // Contrat généré (PDF)
+  contrat_signe      // Contrat signé (e-signature)
+  embauche           // Salarié créé, onboarding démarré
+  annule
+}
+
+model HireProcess {
+  id              String      @id @default(cuid())
+  tenantId        String
+  tenant          Tenant      @relation(fields: [tenantId], references: [id])
+  token           String      @unique  // URL publique
+  expiresAt       DateTime?
+
+  // Infos initiales saisies par RH
+  firstName       String
+  lastName        String
+  email           String
+  jobTitle        String
+  contractType    String      @default("CDI")
+  statusClass     String      @default("Employé")  // Cadre / AM / Employé
+  grossSalary     Float
+  startDate       DateTime
+  weeklyHours     Float       @default(35.0)
+  managerId       String?
+  manager         Employee?   @relation("HireProcessManager", fields: [managerId], references: [id])
+  assignedToId    String?
+  assignedTo      User?       @relation("HireProcessAssignee", fields: [assignedToId], references: [id])
+
+  status          HireStatus  @default(pre_embauche)
+
+  // Données saisies par le candidat (étape 1)
+  draftData       Json?       // toutes infos du formulaire candidat
+  ocrExtracted    Json?       // résultats OCR Mindee/Tesseract
+
+  // Résultats finaux
+  employeeId      String?     @unique  // créé à la finalisation
+  employee        Employee?   @relation("HireProcessEmployee", fields: [employeeId], references: [id])
+
+  history         Json?       // [{ at, by, action }]
+
+  createdById     String?
+  createdBy       User?       @relation("HireProcessCreator", fields: [createdById], references: [id])
+  createdAt       DateTime    @default(now())
+  submittedAt     DateTime?
+  validatedAt     DateTime?
+  finalizedAt     DateTime?
+
+  documents       HireProcessDocument[]
+
+  @@index([tenantId])
+  @@index([status])
+}
+
+model HireProcessDocument {
+  id              String      @id @default(cuid())
+  hireProcessId   String
+  hireProcess     HireProcess @relation(fields: [hireProcessId], references: [id], onDelete: Cascade)
+
+  // Type de doc : cv | id_card | vital_card | rib | diploma | residence_proof | photo | mutuelle | autre
+  key             String
+  filename        String
+  size            Int
+  mimeType        String
+  storagePath     String      // ex. preboarding/{processId}/cv-xxx.pdf
+  storageBucket   String      @default("sirh-preboarding")
+
+  uploadedAt      DateTime    @default(now())
+  validatedAt     DateTime?
+  validatedById   String?
+  rejectedReason  String?
+
+  @@index([hireProcessId])
+  @@index([hireProcessId, key])
 }
