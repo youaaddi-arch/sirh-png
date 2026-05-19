@@ -13,7 +13,8 @@ window.LeaveView = (function () {
 
   function renderShell(host) {
     const me = Store.currentUser();
-    const leaves = Store.get('leaves');
+    const visible = Store.visibleEmployeeIds();
+    const leaves = Store.get('leaves').filter(l => visible.has(l.employeeId));
     const types = Store.get('leaveTypes');
 
     let list = leaves;
@@ -195,12 +196,27 @@ window.LeaveView = (function () {
     document.getElementById('lv-type').onchange   = (e) => { filters.type   = e.target.value; renderShell(document.getElementById('main-content')); };
     document.getElementById('lv-mine').onchange   = (e) => { filters.mine   = e.target.checked; renderShell(document.getElementById('main-content')); };
     document.querySelectorAll('[data-approve]').forEach(b => b.onclick = () => {
+      const l = Store.find('leaves', b.dataset.approve);
       Store.update('leaves', b.dataset.approve, { status: 'approuve', approvedBy: Store.currentUser().id });
+      Store.insert('notifications', {
+        id: U.uid('nt'), userId: l.employeeId, type: 'leave',
+        title: 'Congé approuvé',
+        body: `Votre demande du ${U.fmtDate(l.startDate)} au ${U.fmtDate(l.endDate)} a été approuvée.`,
+        date: new Date().toISOString(), read: false, link: '#/conges?mine=1',
+      });
       U.toast('Demande approuvée', 'success');
       renderShell(document.getElementById('main-content'));
     });
-    document.querySelectorAll('[data-reject]').forEach(b => b.onclick = () => {
-      Store.update('leaves', b.dataset.reject, { status: 'refuse', approvedBy: Store.currentUser().id });
+    document.querySelectorAll('[data-reject]').forEach(b => b.onclick = async () => {
+      const reason = prompt('Motif du refus (optionnel) :') || '';
+      const l = Store.find('leaves', b.dataset.reject);
+      Store.update('leaves', b.dataset.reject, { status: 'refuse', approvedBy: Store.currentUser().id, rejectReason: reason });
+      Store.insert('notifications', {
+        id: U.uid('nt'), userId: l.employeeId, type: 'leave',
+        title: 'Congé refusé',
+        body: `Votre demande du ${U.fmtDate(l.startDate)} au ${U.fmtDate(l.endDate)} a été refusée. ${reason}`,
+        date: new Date().toISOString(), read: false, link: '#/conges?mine=1',
+      });
       U.toast('Demande refusée', 'warn');
       renderShell(document.getElementById('main-content'));
     });
@@ -215,14 +231,17 @@ window.LeaveView = (function () {
 
   function openForm() {
     const me = Store.currentUser();
-    const employees = Store.get('employees');
+    const visible = Store.visibleEmployeeIds();
+    // Manager/RH/admin peuvent saisir pour autrui; employé seulement pour lui
+    const canSelectOther = ['admin', 'rh', 'manager'].includes(me.role);
+    const employees = canSelectOther ? Store.get('employees').filter(e => visible.has(e.id)) : [me];
     const types = Store.get('leaveTypes');
     U.modal({
       title: 'Nouvelle demande de congé',
       body: `
         <form id="lv-form" class="grid md:grid-cols-2 gap-4">
           <div class="md:col-span-2"><label class="label">Collaborateur</label>
-            <select class="select" name="employeeId" required>
+            <select class="select" name="employeeId" required ${canSelectOther?'':'disabled'}>
               ${employees.map(e => `<option value="${e.id}" ${e.id===me.id?'selected':''}>${U.escapeHtml(e.firstName+' '+e.lastName)}</option>`).join('')}
             </select>
           </div>
@@ -250,11 +269,23 @@ window.LeaveView = (function () {
         root.querySelector('[data-submit]').onclick = () => {
           const f = root.querySelector('#lv-form');
           if (!f.reportValidity()) return;
-          const d = Object.fromEntries(new FormData(f).entries());
+          const fd = new FormData(f);
+          const d = Object.fromEntries(fd.entries());
+          if (!d.employeeId) d.employeeId = me.id;
           d.days = U.businessDaysBetween(d.startDate, d.endDate);
           d.createdAt = new Date().toISOString();
           Store.insert('leaves', d);
-          U.toast('Demande créée', 'success');
+          // Notify the manager
+          const emp = Store.employee(d.employeeId);
+          if (emp && emp.managerId && d.status === 'en_attente') {
+            Store.insert('notifications', {
+              id: U.uid('nt'), userId: emp.managerId, type: 'leave',
+              title: 'Nouvelle demande de congé',
+              body: `${emp.firstName} ${emp.lastName} demande ${d.days} jour(s)`,
+              date: new Date().toISOString(), read: false, link: '#/conges',
+            });
+          }
+          U.toast('Demande envoyée à votre responsable', 'success');
           close();
           renderShell(document.getElementById('main-content'));
         };

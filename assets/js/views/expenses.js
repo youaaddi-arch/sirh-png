@@ -5,7 +5,8 @@ window.ExpensesView = (function () {
   const CATEGORIES = ['Repas', 'Transport', 'Hébergement', 'Fournitures', 'Logiciels', 'Téléphonie', 'Formation', 'Autre'];
 
   function render(host) {
-    const expenses = Store.get('expenses').slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    const visible = Store.visibleEmployeeIds();
+    const expenses = Store.get('expenses').filter(e => visible.has(e.employeeId)).slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
     const filtered = expenses.filter(e =>
       (!filters.status   || e.status === filters.status) &&
       (!filters.category || e.category === filters.category)

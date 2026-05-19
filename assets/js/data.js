@@ -461,6 +461,86 @@
     { date: '2026-12-25', name: 'Noël' },
   ];
 
+  // Enrich employees with family/bank/fiscal/emergency data
+  employees.forEach((e) => {
+    Object.assign(e, {
+      familySituation: e.familySituation || ['celibataire','marie','pacs','divorce'][Math.floor(Math.random()*4)],
+      numChildren: e.numChildren ?? Math.floor(Math.random()*3),
+      emergencyName: e.emergencyName || '',
+      emergencyPhone: e.emergencyPhone || '',
+      nationality: e.nationality || 'Française',
+      birthPlace: e.birthPlace || '',
+      rqth: e.rqth || false,
+      bankBic: e.bankBic || '',
+      taxRate: e.taxRate ?? +(Math.random()*8 + 3).toFixed(1),
+      transportSubsidy: e.transportSubsidy ?? 75,
+      mealVouchers: e.mealVouchers ?? true,
+      mealVoucherValue: e.mealVoucherValue ?? 9,
+      weeklyHours: e.weeklyHours ?? 35,
+      coefficient: e.coefficient || '210',
+      classification: e.classification || 'Employé',
+      convention: e.convention || 'Organismes de Formation',
+    });
+  });
+
+  // Contracts (historique des contrats par salarié)
+  const contracts = employees.map(e => ({
+    id: U.uid('ct'), employeeId: e.id,
+    type: e.contractType, position: e.jobTitle,
+    startDate: e.contractStart, endDate: e.contractEnd || null,
+    grossSalary: e.salary, weeklyHours: e.weeklyHours || 35,
+    classification: e.classification, coefficient: e.coefficient,
+    signedAt: e.contractStart,
+    status: 'actif',
+    notes: '',
+  }));
+
+  // Salary history (mouvements de salaire)
+  const salaryHistory = employees.flatMap(e => [
+    { id: U.uid('sh'), employeeId: e.id, effectiveDate: e.contractStart, grossSalary: Math.round(e.salary * 0.92), reason: 'Embauche' },
+    ...(e.salary > 2500 ? [{ id: U.uid('sh'), employeeId: e.id, effectiveDate: addDays(-365), grossSalary: Math.round(e.salary * 0.96), reason: 'Augmentation annuelle' }] : []),
+    { id: U.uid('sh'), employeeId: e.id, effectiveDate: addDays(-180), grossSalary: e.salary, reason: 'Revalorisation' },
+  ]);
+
+  // Letters (courriers RH)
+  const letters = [
+    { id: 'lt_001', employeeId: 'emp_011', type: 'attestation_employeur', subject: 'Attestation employeur', date: addDays(-30), createdBy: 'emp_002', status: 'envoye', content: '' },
+    { id: 'lt_002', employeeId: 'emp_013', type: 'certificat_travail', subject: 'Certificat de travail', date: addDays(-60), createdBy: 'emp_002', status: 'envoye', content: '' },
+    { id: 'lt_003', employeeId: 'emp_022', type: 'felicitations', subject: 'Félicitations - validation période d\'essai', date: addDays(-45), createdBy: 'emp_005', status: 'envoye', content: '' },
+  ];
+
+  // Presences (statut journalier pour le planning)
+  const presences = [];
+  const presenceStatuses = ['present', 'teletravail', 'present', 'present', 'present', 'teletravail'];
+  for (const emp of employees) {
+    for (let i = -7; i <= 14; i++) {
+      const d = new Date(); d.setDate(d.getDate() + i);
+      const dow = d.getDay();
+      if (dow === 0 || dow === 6) continue;
+      presences.push({
+        id: U.uid('pr'),
+        employeeId: emp.id, date: iso(d),
+        status: presenceStatuses[Math.floor(Math.random()*presenceStatuses.length)],
+      });
+    }
+  }
+
+  // Variable payroll items (primes et retenues mensuelles)
+  const payrollVariables = [];
+  ['2026-04', '2026-03'].forEach(month => {
+    employees.slice(0, 10).forEach(e => {
+      if (Math.random() < 0.3) {
+        payrollVariables.push({
+          id: U.uid('pv'),
+          employeeId: e.id, month,
+          type: 'prime',
+          label: ['Prime exceptionnelle', 'Prime de performance', 'Prime de fin d\'année'][Math.floor(Math.random()*3)],
+          amount: Math.round(Math.random()*500 + 100),
+        });
+      }
+    });
+  });
+
   window.SEED = {
     companies, departments, employees,
     leaveTypes, leaves, leaveBalances,
@@ -470,6 +550,7 @@
     reviews, goals,
     documents, payslips, onboardings,
     notifications, holidays,
+    contracts, salaryHistory, letters, presences, payrollVariables,
     settings: {
       companyName: 'Paris Nord Groupe',
       slogan: 'L\'éducation au cœur de notre engagement',

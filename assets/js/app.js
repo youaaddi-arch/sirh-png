@@ -1,12 +1,16 @@
 /* App shell + layout + routing */
 window.App = (function () {
   const NAV = [
+    { section: 'Mon espace' },
+    { key: 'myspace',      href: '#/mon-espace',    label: 'Accueil',         icon: 'dashboard', roles: '*' },
+
     { section: 'Pilotage' },
-    { key: 'dashboard',    href: '#/',              label: 'Tableau de bord', icon: 'dashboard', roles: '*' },
+    { key: 'dashboard',    href: '#/',              label: 'Tableau de bord', icon: 'dashboard', roles: ['admin','rh','manager','paie'] },
     { key: 'reports',      href: '#/rapports',      label: 'Rapports',        icon: 'chart',     roles: ['admin','rh','manager'] },
+    { key: 'planning',     href: '#/planning',      label: 'Planning équipe', icon: 'leave',     roles: ['admin','rh','manager','paie'] },
 
     { section: 'Collaborateurs' },
-    { key: 'employees',    href: '#/collaborateurs', label: 'Collaborateurs', icon: 'users',     roles: '*' },
+    { key: 'employees',    href: '#/collaborateurs', label: 'Collaborateurs', icon: 'users',     roles: ['admin','rh','manager','paie'] },
     { key: 'orgchart',     href: '#/organigramme',   label: 'Organigramme',   icon: 'sitemap',   roles: '*' },
     { key: 'onboarding',   href: '#/onboarding',     label: 'Onboarding',     icon: 'onboard',   roles: ['admin','rh'] },
 
@@ -16,7 +20,8 @@ window.App = (function () {
 
     { section: 'Argent' },
     { key: 'expenses',     href: '#/frais',         label: 'Notes de frais',  icon: 'money',     roles: '*' },
-    { key: 'payroll',      href: '#/paie',          label: 'Paie',            icon: 'money',     roles: ['admin','rh','paie'] },
+    { key: 'payroll',      href: '#/paie',          label: 'Bulletins de paie', icon: 'money',   roles: ['admin','rh','paie'] },
+    { key: 'payroll_vars', href: '#/variables-paie',label: 'Variables de paie', icon: 'chart',   roles: ['admin','rh','paie'] },
 
     { section: 'Performance' },
     { key: 'reviews',      href: '#/entretiens',    label: 'Entretiens',      icon: 'star',      roles: '*' },
@@ -25,6 +30,7 @@ window.App = (function () {
     { section: 'Talents' },
     { key: 'recruitment',  href: '#/recrutement',   label: 'Recrutement',     icon: 'briefcase', roles: ['admin','rh','manager'] },
     { key: 'documents',    href: '#/documents',     label: 'Documents',       icon: 'document',  roles: '*' },
+    { key: 'letters',      href: '#/courriers',     label: 'Courriers RH',    icon: 'mail',      roles: ['admin','rh','manager'] },
 
     { section: 'Référentiel' },
     { key: 'companies',    href: '#/societes',      label: 'Sociétés',        icon: 'building',  roles: ['admin','rh'] },
@@ -34,8 +40,13 @@ window.App = (function () {
   let activeKey = 'dashboard';
 
   function start() {
-    Router.add(/^\/$/,                         () => renderApp('dashboard',    DashboardView.render));
+    Router.add(/^\/$/,                         () => {
+      const me = Store.currentUser();
+      if (me && me.role === 'employe') { Router.navigate('/mon-espace'); return; }
+      renderApp('dashboard', DashboardView.render);
+    });
     Router.add(/^\/login$/,                    () => AuthView.render());
+    Router.add(/^\/mon-espace$/,               () => renderApp('myspace',    MySpaceView.render));
     Router.add(/^\/collaborateurs$/,           (r) => renderApp('employees', (h) => EmployeesView.render(h, r)));
     Router.add(/^\/collaborateurs\/([^\/]+)$/, (r) => renderApp('employees', (h) => EmployeesView.render(h, r)));
     Router.add(/^\/conges$/,                   (r) => renderApp('leave',     (h) => LeaveView.render(h, r)));
@@ -49,6 +60,9 @@ window.App = (function () {
     Router.add(/^\/rapports$/,                 () => renderApp('reports',    ReportsView.render));
     Router.add(/^\/societes$/,                 () => renderApp('companies',  CompaniesView.render));
     Router.add(/^\/paie$/,                     () => renderApp('payroll',    PayrollView.render));
+    Router.add(/^\/variables-paie$/,           () => renderApp('payroll_vars', PayrollVarsView.render));
+    Router.add(/^\/planning$/,                 () => renderApp('planning',   PlanningView.render));
+    Router.add(/^\/courriers$/,                () => renderApp('letters',    LettersView.render));
     Router.add(/^\/onboarding$/,               () => renderApp('onboarding', OnboardingView.render));
     Router.add(/^\/parametres$/,               () => renderApp('settings',   SettingsView.render));
     // Fallback handled in router

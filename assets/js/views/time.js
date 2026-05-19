@@ -20,7 +20,10 @@ window.TimeView = (function () {
     const me = Store.currentUser();
     if (!filters.employeeId) filters.employeeId = me.id;
 
-    const employees = Store.get('employees');
+    const visible = Store.visibleEmployeeIds();
+    const employees = Store.get('employees').filter(e => visible.has(e.id));
+    // Si l'employé sélectionné n'est pas visible, repli sur soi-même
+    if (!visible.has(filters.employeeId)) filters.employeeId = me.id;
     const days = weekDays(filters.week);
     const isoDays = days.map(d => d.toISOString().slice(0, 10));
     const timesheets = Store.where('timesheets', t => t.employeeId === filters.employeeId && isoDays.includes(t.date));

@@ -92,6 +92,37 @@ window.Store = (function () {
   const company = (id) => find('companies', id);
   const department = (id) => find('departments', id);
 
+  // Permission helpers
+  // Returns the set of employee IDs the current user is allowed to see.
+  function visibleEmployeeIds() {
+    const me = currentUser();
+    if (!me) return new Set();
+    if (me.role === 'admin' || me.role === 'rh' || me.role === 'paie') {
+      return new Set((state.employees || []).map(e => e.id));
+    }
+    if (me.role === 'manager') {
+      // Self + direct reports + transitively reports
+      const ids = new Set([me.id]);
+      let changed = true;
+      while (changed) {
+        changed = false;
+        (state.employees || []).forEach(e => {
+          if (!ids.has(e.id) && e.managerId && ids.has(e.managerId)) {
+            ids.add(e.id); changed = true;
+          }
+        });
+      }
+      return ids;
+    }
+    return new Set([me.id]); // employe sees only themselves
+  }
+
+  function canSeeEmployee(id) { return visibleEmployeeIds().has(id); }
+  function canApprove() {
+    const me = currentUser();
+    return me && ['admin', 'rh', 'manager'].includes(me.role);
+  }
+
   const exportAll = () => JSON.stringify(state, null, 2);
   const importAll = (json) => {
     try {
@@ -109,6 +140,7 @@ window.Store = (function () {
     settings, updateSettings,
     login, logout, currentUser,
     employee, employeeName, company, department,
+    visibleEmployeeIds, canSeeEmployee, canApprove,
     exportAll, importAll, reset,
   };
 })();

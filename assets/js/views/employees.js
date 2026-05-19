@@ -253,6 +253,7 @@ window.EmployeesView = (function () {
   function renderDetail(host, id) {
     const e = Store.find('employees', id);
     if (!e) { host.innerHTML = '<div class="card p-6">Collaborateur introuvable.</div>'; return; }
+    if (!Store.canSeeEmployee(id)) { host.innerHTML = '<div class="card p-6">Vous n\'avez pas accès à cette fiche.</div>'; return; }
     const co = Store.company(e.companyId);
     const dep = Store.department(e.departmentId);
     const mgr = e.managerId ? Store.employee(e.managerId) : null;
@@ -262,6 +263,9 @@ window.EmployeesView = (function () {
     const payslips = Store.where('payslips', p => p.employeeId === e.id).sort((a, b) => b.month.localeCompare(a.month));
     const balances = Store.where('leaveBalances', b => b.employeeId === e.id);
     const reviews = Store.where('reviews', r => r.employeeId === e.id);
+    const contracts = Store.where('contracts', c => c.employeeId === e.id);
+    const salaryHistory = Store.where('salaryHistory', s => s.employeeId === e.id).sort((a,b) => (b.effectiveDate||'').localeCompare(a.effectiveDate||''));
+    const letters = Store.where('letters', l => l.employeeId === e.id).sort((a,b) => (b.date||'').localeCompare(a.date||''));
 
     host.innerHTML = `
       <div class="space-y-6">
@@ -300,11 +304,11 @@ window.EmployeesView = (function () {
         <!-- Tabs -->
         <div class="card">
           <div class="flex border-b border-slate-200 px-2 overflow-x-auto">
-            ${['Profil','Carrière','Congés','Documents','Paie','Entretiens','Équipe'].map((t,i)=>
+            ${['Profil','Famille','Banque & Fiscal','Carrière','Contrats','Salaire','Congés','Temps','Documents','Paie','Courriers','Entretiens','Équipe'].map((t,i)=>
               `<button class="px-4 py-3 text-sm font-medium border-b-2 ${i===0?'border-brand-600 text-brand-700':'border-transparent text-slate-600 hover:text-slate-900'}" data-tab="${i}">${t}</button>`
             ).join('')}
           </div>
-          <div id="tab-content" class="p-6">${renderTab(0, e, { co, dep, mgr, team, leaves, docs, payslips, balances, reviews })}</div>
+          <div id="tab-content" class="p-6">${renderTab(0, e, { co, dep, mgr, team, leaves, docs, payslips, balances, reviews, contracts, salaryHistory, letters })}</div>
         </div>
       </div>
     `;
@@ -314,7 +318,7 @@ window.EmployeesView = (function () {
           x.className = 'px-4 py-3 text-sm font-medium border-b-2 border-transparent text-slate-600 hover:text-slate-900';
         });
         b.className = 'px-4 py-3 text-sm font-medium border-b-2 border-brand-600 text-brand-700';
-        document.getElementById('tab-content').innerHTML = renderTab(+b.dataset.tab, e, { co, dep, mgr, team, leaves, docs, payslips, balances, reviews });
+        document.getElementById('tab-content').innerHTML = renderTab(+b.dataset.tab, e, { co, dep, mgr, team, leaves, docs, payslips, balances, reviews, contracts, salaryHistory, letters });
       };
     });
     document.querySelector('[data-edit-emp]').onclick = () => openForm(e.id);
@@ -328,28 +332,117 @@ window.EmployeesView = (function () {
           ${kv('Email', e.email)}
           ${kv('Téléphone', e.phone)}
           ${kv('Date de naissance', e.birthDate ? U.fmtDateLong(e.birthDate) : '—')}
+          ${kv('Lieu de naissance', e.birthPlace)}
+          ${kv('Nationalité', e.nationality)}
           ${kv('Adresse', e.address)}
           ${kv('Société', ctx.co ? `${ctx.co.code} — ${ctx.co.name}` : '—')}
           ${kv('Département', ctx.dep ? ctx.dep.name : '—')}
           ${kv('Manager', ctx.mgr ? `${ctx.mgr.firstName} ${ctx.mgr.lastName}` : '—')}
           ${kv('N° sécurité sociale', e.socialSecurity || '—')}
-          ${kv('IBAN', e.iban || '—')}
+          ${kv('RQTH', e.rqth ? 'Oui' : 'Non')}
         </div>
       `;
     }
     if (i === 1) {
+      // Famille / Contact d'urgence
       return `
         <div class="grid md:grid-cols-2 gap-6 text-sm">
+          ${kv('Situation familiale', { celibataire: 'Célibataire', marie: 'Marié(e)', pacs: 'Pacsé(e)', divorce: 'Divorcé(e)', veuf: 'Veuf/Veuve' }[e.familySituation] || '—')}
+          ${kv('Nombre d\'enfants', e.numChildren ?? 0)}
+          ${kv('Contact d\'urgence', e.emergencyName)}
+          ${kv('Téléphone urgence', e.emergencyPhone)}
+        </div>
+      `;
+    }
+    if (i === 2) {
+      // Banque & Fiscal
+      return `
+        <div class="grid md:grid-cols-2 gap-6 text-sm">
+          ${kv('IBAN', e.iban || '—')}
+          ${kv('BIC', e.bankBic || '—')}
+          ${kv('Taux PAS (prélèvement à la source)', e.taxRate != null ? e.taxRate.toFixed(1) + ' %' : '—')}
+          ${kv('Tickets restaurant', e.mealVouchers ? `Oui (${e.mealVoucherValue}€)` : 'Non')}
+          ${kv('Prise en charge transport', (e.transportSubsidy || 0) + ' %')}
+          ${kv('N° Sécurité sociale', e.socialSecurity || '—')}
+        </div>
+      `;
+    }
+    if (i === 3) {
+      // Carrière
+      return `
+        <div class="grid md:grid-cols-2 gap-6 text-sm">
+          ${kv('Poste', e.jobTitle)}
           ${kv('Type de contrat', e.contractType)}
           ${kv('Date d\'embauche', U.fmtDateLong(e.contractStart))}
           ${kv('Fin de contrat', e.contractEnd ? U.fmtDateLong(e.contractEnd) : '—')}
           ${kv('Ancienneté', anciennete(e.contractStart))}
+          ${kv('Convention collective', e.convention)}
+          ${kv('Classification', e.classification)}
+          ${kv('Coefficient', e.coefficient)}
+          ${kv('Durée hebdomadaire', (e.weeklyHours || 35) + ' h')}
           ${kv('Salaire brut mensuel', U.fmtEur(e.salary||0))}
           ${kv('Coût total employeur (est.)', U.fmtEur((e.salary||0) * 1.42))}
         </div>
       `;
     }
-    if (i === 2) {
+    if (i === 4) {
+      // Contrats
+      return `
+        <div class="card overflow-hidden">
+          <table class="table">
+            <thead><tr><th>Type</th><th>Poste</th><th>Période</th><th>Heures/sem</th><th>Salaire brut</th><th>Statut</th></tr></thead>
+            <tbody>
+              ${ctx.contracts.length === 0 ? '<tr><td colspan="6" class="text-center py-6 text-slate-500">Aucun contrat</td></tr>' :
+                ctx.contracts.map(c => `
+                  <tr>
+                    <td><span class="badge badge-blue">${U.escapeHtml(c.type)}</span></td>
+                    <td class="text-sm">${U.escapeHtml(c.position||'')}</td>
+                    <td class="text-sm">${U.fmtDate(c.startDate)} → ${c.endDate ? U.fmtDate(c.endDate) : 'indéterminé'}</td>
+                    <td>${c.weeklyHours||35}h</td>
+                    <td>${U.fmtEur(c.grossSalary||0)}</td>
+                    <td><span class="badge ${c.status==='actif'?'badge-green':'badge-gray'}">${c.status}</span></td>
+                  </tr>
+                `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+    if (i === 5) {
+      // Historique salaire
+      const max = Math.max(...ctx.salaryHistory.map(s => s.grossSalary), 1);
+      return `
+        <div class="grid lg:grid-cols-2 gap-6">
+          <div class="card overflow-hidden">
+            <table class="table">
+              <thead><tr><th>Date effet</th><th>Salaire brut</th><th>Motif</th></tr></thead>
+              <tbody>
+                ${ctx.salaryHistory.length === 0 ? '<tr><td colspan="3" class="text-center py-6 text-slate-500">Aucun historique</td></tr>' :
+                  ctx.salaryHistory.map(s => `
+                    <tr>
+                      <td class="text-sm">${U.fmtDate(s.effectiveDate)}</td>
+                      <td class="font-semibold">${U.fmtEur(s.grossSalary)}</td>
+                      <td class="text-sm text-slate-600">${U.escapeHtml(s.reason||'')}</td>
+                    </tr>
+                  `).join('')}
+              </tbody>
+            </table>
+          </div>
+          <div class="card p-5">
+            <h3 class="font-semibold mb-3">Évolution</h3>
+            <div class="space-y-2">
+              ${[...ctx.salaryHistory].reverse().map(s => `
+                <div>
+                  <div class="flex justify-between text-xs mb-1"><span>${U.fmtDate(s.effectiveDate)}</span><span class="font-semibold">${U.fmtEur(s.grossSalary)}</span></div>
+                  <div class="progress"><div class="progress-bar" style="width:${(s.grossSalary/max*100).toFixed(0)}%"></div></div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    if (i === 6) {
       return `
         <div class="space-y-4">
           <div class="grid md:grid-cols-3 gap-3">
@@ -389,7 +482,34 @@ window.EmployeesView = (function () {
         </div>
       `;
     }
-    if (i === 3) {
+    if (i === 7) {
+      // Temps
+      const sheets = Store.where('timesheets', t => t.employeeId === e.id).sort((a,b) => b.date.localeCompare(a.date)).slice(0, 30);
+      const totalH = sheets.reduce((s,t) => s + (t.hours||0), 0);
+      return `
+        <div class="mb-3 text-sm text-slate-600">30 derniers pointages — total : <span class="font-semibold">${totalH.toFixed(1)}h</span></div>
+        <div class="card overflow-hidden">
+          <table class="table">
+            <thead><tr><th>Date</th><th>Début</th><th>Fin</th><th>Pause</th><th>Heures</th><th>Projet</th><th>Statut</th></tr></thead>
+            <tbody>
+              ${sheets.length === 0 ? '<tr><td colspan="7" class="text-center py-6 text-slate-500">Aucun pointage</td></tr>' :
+                sheets.map(t => `
+                  <tr>
+                    <td class="text-sm">${U.fmtDate(t.date)}</td>
+                    <td>${t.startTime||'—'}</td>
+                    <td>${t.endTime||'—'}</td>
+                    <td>${t.breakMinutes||0} min</td>
+                    <td class="font-semibold">${t.hours}h</td>
+                    <td class="text-sm">${U.escapeHtml(t.project||'')}</td>
+                    <td>${t.status==='valide'?'<span class="badge badge-green">Validé</span>':'<span class="badge badge-amber">À valider</span>'}</td>
+                  </tr>
+                `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+    if (i === 8) {
       return `
         <div class="card overflow-hidden">
           <table class="table">
@@ -410,7 +530,7 @@ window.EmployeesView = (function () {
         </div>
       `;
     }
-    if (i === 4) {
+    if (i === 9) {
       return `
         <div class="card overflow-hidden">
           <table class="table">
@@ -432,7 +552,31 @@ window.EmployeesView = (function () {
         </div>
       `;
     }
-    if (i === 5) {
+    if (i === 10) {
+      // Courriers
+      return `
+        <div class="card overflow-hidden">
+          <table class="table">
+            <thead><tr><th>Date</th><th>Type</th><th>Objet</th><th>Statut</th></tr></thead>
+            <tbody>
+              ${ctx.letters.length === 0 ? '<tr><td colspan="4" class="text-center py-6 text-slate-500">Aucun courrier</td></tr>' :
+                ctx.letters.map(l => `
+                  <tr>
+                    <td class="text-sm">${U.fmtDate(l.date)}</td>
+                    <td><span class="badge badge-blue">${U.escapeHtml(l.type)}</span></td>
+                    <td class="text-sm">${U.escapeHtml(l.subject)}</td>
+                    <td><span class="badge ${l.status==='envoye'?'badge-green':'badge-amber'}">${l.status}</span></td>
+                  </tr>
+                `).join('')}
+            </tbody>
+          </table>
+        </div>
+        <div class="mt-3">
+          <a href="#/courriers" class="text-sm text-brand-600 hover:underline">→ Générer un courrier dans le module Courriers RH</a>
+        </div>
+      `;
+    }
+    if (i === 11) {
       return `
         <div class="card overflow-hidden">
           <table class="table">
@@ -453,7 +597,7 @@ window.EmployeesView = (function () {
         </div>
       `;
     }
-    if (i === 6) {
+    if (i === 12) {
       return `
         <div class="space-y-3">
           ${ctx.mgr ? `
