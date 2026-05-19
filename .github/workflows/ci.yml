@@ -27,28 +27,35 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with: { version: 9 }
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @sirh/api prisma:generate
+      - name: Install pnpm
+        run: npm install -g pnpm@9.0.0
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+      - name: Generate Prisma client
+        run: pnpm --filter @sirh/api prisma:generate
         env:
           DATABASE_URL: postgresql://sirh:test@localhost:5432/sirh_test
-      - run: pnpm --filter @sirh/api build
+      - name: Build API
+        run: pnpm --filter @sirh/api build
 
   web:
     name: Frontend (Next.js)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with: { version: 9 }
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @sirh/web build
+      - name: Install pnpm
+        run: npm install -g pnpm@9.0.0
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+      - name: Generate Prisma client (needed by shared types)
+        run: pnpm --filter @sirh/api prisma:generate
+        env:
+          DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
+      - name: Build Web
+        run: pnpm --filter @sirh/web build
