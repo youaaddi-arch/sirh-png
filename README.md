@@ -1,91 +1,88 @@
-# SIRH Paris Nord Groupe
+# SIRH Paris Nord Groupe — v2
 
-> **SIRH multi-entités complet, type Eurecia** — pour le groupe Paris Nord.
+> **SIRH multi-entités complet — référence Eurecia** — pour les 36 sociétés / 56 entités du groupe.
 
-Plateforme RH web couvrant tous les processus essentiels : congés, temps, notes
-de frais, entretiens, formation, recrutement, paie, documents, organigramme,
-rapports, onboarding et référentiel multi-sociétés.
+## État du projet
 
-## Lancement
+| Phase | Statut |
+|---|---|
+| 🗂 **v1 (SPA HTML+JS) → archivée** dans [`legacy-spa/`](./legacy-spa) | ✅ Démo encore en ligne sur GitHub Pages |
+| 🏗 **v2 (monorepo full-stack)** | 🚧 Sprint 0 — Bootstrap en cours |
 
-C'est une **application web autonome** : aucune installation requise.
+## Documentation
+
+- [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) — architecture détaillée v2 (schéma BDD, API, sprints, mapping Eurecia)
+
+## Architecture v2
+
+```
+sirh-png/
+├── apps/
+│   ├── api/                  # NestJS + Prisma + PostgreSQL
+│   └── web/                  # Next.js 15 (App Router) + Tailwind, design type Eurecia
+├── packages/
+│   ├── conventions-data/     # Référentiel des CCN françaises
+│   └── shared-types/
+├── infrastructure/
+│   └── docker-compose.yml    # Postgres + Redis + MinIO + MailHog
+├── legacy-spa/               # ANCIENNE version (HTML+JS), archivée
+└── docs/
+```
+
+## Démarrage rapide (développement local)
 
 ```bash
-# Option 1 : ouvrir directement
-xdg-open index.html        # Linux
-open index.html            # macOS
-start index.html           # Windows
+# 1. Installer Docker + pnpm
+# 2. Cloner et installer
+git clone https://github.com/youaaddi-arch/sirh-png.git
+cd sirh-png
+git checkout claude/hr-management-software-ddW9f
+pnpm install
 
-# Option 2 : serveur statique local
-python3 -m http.server 8080
-# puis http://localhost:8080
+# 3. Démarrer les services (Postgres + MinIO + Redis + MailHog)
+pnpm db:up
+
+# 4. Configurer les .env
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env
+
+# 5. Migrer la base et seeder
+pnpm db:migrate
+pnpm db:seed
+
+# 6. Lancer en dev (les deux apps en parallèle)
+pnpm dev
 ```
 
-## Comptes de démonstration
+- **Front Next.js** : http://localhost:3000
+- **API NestJS** : http://localhost:4000/api
+- **Swagger API** : http://localhost:4000/docs
+- **MinIO console** : http://localhost:9001 (sirh / sirh_dev_pwd)
+- **MailHog** (emails de dev) : http://localhost:8025
 
-| Rôle             | Email                          | Mot de passe |
-|------------------|--------------------------------|--------------|
-| Administrateur   | emir.deniz@pn-groupe.fr        | `admin`      |
-| RH               | keziban.deniz@pn-groupe.fr     | `rh`         |
-| Manager          | delphine.pavis@pn-groupe.fr    | `manager`    |
-| Paie             | thomas.bernard@pn-groupe.fr    | `paie`       |
-| Collaborateur    | sophie.martin@pn-groupe.fr     | `employe`    |
+## Compte admin par défaut
 
-## Modules
+- Email : `admin@pn-groupe.fr`
+- Password : `Admin2026!`
 
-- **Tableau de bord** — KPIs, validations en attente, anniversaires, planning.
-- **Collaborateurs** — Fiches complètes (profil, carrière, congés, paie, documents, équipe).
-- **Organigramme** — Vue hiérarchique et effectifs par département.
-- **Onboarding** — Workflows d'intégration avec checklist.
-- **Congés & absences** — Demandes, soldes par type, calendrier, validation.
-- **Temps de travail** — Pointage, saisie hebdo, validation.
-- **Notes de frais** — Soumission, workflow d'approbation, remboursement.
-- **Paie** — Bulletins, masse salariale, déclarations sociales.
-- **Entretiens & objectifs** — Annuels, professionnels, période d'essai, 360°.
-- **Formation** — Catalogue, inscriptions, plan de développement.
-- **Recrutement** — Offres, pipeline Kanban, gestion des candidats.
-- **Documents** — Coffre-fort numérique par collaborateur.
-- **Rapports** — Effectifs, contrats, masse salariale, exports.
-- **Sociétés** — Référentiel multi-entités (sièges + établissements).
-- **Paramètres** — Types de congés, départements, import/export JSON.
+## Roadmap
 
-## Périmètre des sociétés
+Voir [docs/ARCHITECTURE.md § 7](./docs/ARCHITECTURE.md#7-roadmap-par-sprints) — 11 sprints sur ~13 semaines.
 
-Les **36 sociétés et 56 entités (sièges + établissements)** du groupe Paris
-Nord sont pré-chargées dans le module « Sociétés » à partir du référentiel
-interne (`GROUPE_LISTE_STES_ET_ETS`). Quelques exemples : DEFIS, AFPEC, CFLSS,
-DBS, ELFE, France Accès, France Diplôme, ONEL, PBA, PNBS (Susanoo, Marseille,
-Rouen, Lille, Lyon, Atlantique), PNFF, Poly Langues, Qualifforma, Zurich
-Institut, Form Alsace, Ouest Formation, Edu Sync, U Teach Me, Care Conseil RH,
-IDC, ILEF, Equipform, MyPersonali, Orcea, PNA, PNLS, AimEnglish, Chiffr'Actif…
+## Référence Eurecia
 
-## Stack technique
+Le mapping fonctionnel Eurecia → notre architecture est documenté dans
+[ARCHITECTURE.md § 1bis](./docs/ARCHITECTURE.md#1bis-cartographie-eurecia--sirh-paris-nord). Tous les modules
+d'Eurecia sont couverts, avec en plus :
 
-- **Front pur** : HTML + Tailwind CSS (CDN) + JavaScript vanilla.
-- **Persistance** : `localStorage` (export / import JSON depuis Paramètres).
-- **Routage** : hash router (`#/conges`, `#/collaborateurs/emp_001`, …).
-- **Aucune dépendance backend** — fonctionne ouvert depuis le disque.
+- 🤖 **IA Claude** pour génération automatique de contrats conformes au droit français
+- 🇫🇷 **API Légifrance** pour conventions collectives à jour automatiquement
+- 📷 **OCR** sur pièces d'identité et carte vitale → pré-saisie auto
+- 🏢 **Multi-sociétés natif** (36 entités du groupe pré-chargées)
 
-## Structure
+## v1 — Démo statique en ligne
 
-```
-index.html
-assets/
-├── css/app.css
-└── js/
-    ├── utils.js   data.js   store.js   router.js   app.js
-    └── views/
-        ├── auth.js          dashboard.js
-        ├── employees.js     leave.js          time.js
-        ├── expenses.js      reviews.js        training.js
-        ├── recruitment.js   documents.js      orgchart.js
-        ├── reports.js       companies.js      payroll.js
-        ├── onboarding.js    settings.js
-```
+L'ancienne version SPA reste accessible :
 
-## Sauvegarde / restauration
-
-Allez dans **Paramètres → Données** :
-- **Exporter** : télécharge l'intégralité de la base au format JSON.
-- **Importer** : restaure depuis un export précédent.
-- **Réinitialiser** : remet la base aux données initiales (irréversible).
+- **GitHub Pages** : https://youaaddi-arch.github.io/sirh-png/legacy-spa/
+- Comptes démo : `emir.deniz@pn-groupe.fr` / `admin`

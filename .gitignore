@@ -142,3 +142,10 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
 .netlify/
+
+# Sprint 0+ — monorepo
+.turbo/
+apps/*/dist
+apps/*/build
+apps/api/prisma/migrations/dev.db*
+

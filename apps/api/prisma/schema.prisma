@@ -1,0 +1,250 @@
+// Sprint 0 — Bootstrap schema
+// Tables ajoutées progressivement par sprint suivant le doc d'architecture.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// Organisation = Groupe (ex: Paris Nord Groupe)
+// Tenant       = Société juridique (ex: 003-DBS, 014-PNFF…)
+// ============================================================
+
+model Organisation {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  logoUrl   String?
+  createdAt DateTime @default(now())
+  tenants   Tenant[]
+}
+
+model Tenant {
+  id              String  @id @default(cuid())
+  organisationId  String
+  organisation    Organisation @relation(fields: [organisationId], references: [id])
+  code            String  @unique          // "003-DBS"
+  name            String
+  type            String  @default("SIEGE") // SIEGE | ETS
+  siren           String?
+  siret           String?
+  apeCode         String?
+  urssafCode      String?
+  urssafName      String?
+  address         String?
+  repName         String?
+  repRole         String?
+
+  conventionCode  String? // FK Convention.code (referentiel global)
+
+  medicalProvider     Json?  // { name, address, phone, email, doctor }
+  healthInsurance     Json?  // { name, contract_number, phone, share_employer }
+  providentInsurance  Json?
+  pensionFund         Json?
+  workInjuryFund      Json?
+  apprenticeshipTax   Json?
+  cseRepresentative   String?
+  safetyOfficer       String?
+
+  fiscalYearStart String  @default("01-01")
+  defaultCurrency String  @default("EUR")
+  timezone        String  @default("Europe/Paris")
+  hoursPerDay     Float   @default(7.5)
+  weeklyHours     Float   @default(35.0)
+
+  active          Boolean @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  users           User[]
+  employees       Employee[]
+  departments     Department[]
+  auditLogs       AuditLog[]
+}
+
+// ============================================================
+// Référentiel des conventions collectives (global, non scopé tenant)
+// ============================================================
+
+model Convention {
+  code                    String  @id   // "IDCC_3249"
+  name                    String
+  brochure                String?
+  cpAnnuel                Int     @default(25)
+  paidSickFromDay         Int     @default(1)
+  trialPeriod             Json    // { CDI: { Employé:60, Cadre:120 }, CDD: { default:30 } }
+  trialRenewal            Json
+  notice                  Json
+  extraLeavesSeniority    Json    // { 5:1, 10:2 }
+  conventionalLeaves      Json    // { mariage:5, naissance:3 }
+  minimumWageCoef         Json?
+  legifranceUrl           String?
+  lastSyncAt              DateTime?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+
+// ============================================================
+// Utilisateurs et permissions
+// ============================================================
+
+enum Role {
+  admin
+  rh
+  paie
+  manager
+  employe
+}
+
+model User {
+  id                String   @id @default(cuid())
+  tenantId          String
+  tenant            Tenant   @relation(fields: [tenantId], references: [id])
+  email             String   @unique
+  passwordHash      String
+  role              Role     @default(employe)
+  twoFactorEnabled  Boolean  @default(false)
+  twoFactorSecret   String?
+  lastLoginAt       DateTime?
+  failedLoginCount  Int      @default(0)
+  lockedUntil       DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  employee          Employee?
+  auditLogs         AuditLog[]
+  notifications     Notification[]
+
+  @@index([tenantId])
+}
+
+model Department {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  name        String
+  parentId    String?
+  parent      Department? @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  children    Department[] @relation("DepartmentHierarchy")
+  managerId   String?
+  employees   Employee[]
+
+  @@index([tenantId])
+}
+
+// ============================================================
+// Salariés — fiche complète
+// ============================================================
+
+enum EmployeeStatus {
+  actif
+  inactif
+  suspendu
+}
+
+model Employee {
+  id                String   @id @default(cuid())
+  tenantId          String
+  tenant            Tenant   @relation(fields: [tenantId], references: [id])
+  userId            String?  @unique
+  user              User?    @relation(fields: [userId], references: [id])
+  matricule         String
+
+  // Identité
+  civility          String?
+  firstName         String
+  lastName          String
+  maidenName        String?
+  nationality       String?
+  birthDate         DateTime?
+  birthPlace        String?
+  birthCountry      String?
+  socialSecurity    String?  // CHIFFRÉ en prod
+
+  // Coordonnées
+  email             String
+  phone             String?
+  address           String?
+  postalCode        String?
+  city              String?
+  country           String?
+
+  // Situation familiale
+  familySituation   String?  // celibataire/marie/pacs/divorce/veuf
+  numChildren       Int      @default(0)
+  emergencyName     String?
+  emergencyPhone    String?
+  rqth              Boolean  @default(false)
+
+  // Banque & Fiscal
+  iban              String?  // CHIFFRÉ en prod
+  bic               String?
+  bankName          String?
+  taxRate           Float?
+
+  // Carrière
+  jobTitle          String
+  departmentId     String?
+  department        Department? @relation(fields: [departmentId], references: [id])
+  managerId         String?
+  manager           Employee?   @relation("EmployeeManager", fields: [managerId], references: [id])
+  subordinates      Employee[]  @relation("EmployeeManager")
+  classification    String?   // Cadre/AM/Employé
+  coefficient       String?
+  contractType      String    @default("CDI")
+  contractStart     DateTime
+  contractEnd       DateTime?
+  weeklyHours       Float     @default(35.0)
+  grossSalary       Float     // CHIFFRÉ en prod
+
+  status            EmployeeStatus @default(actif)
+  photoUrl          String?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([tenantId, matricule])
+  @@index([tenantId])
+  @@index([managerId])
+}
+
+// ============================================================
+// Audit & Notifications (système)
+// ============================================================
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String
+  title     String
+  body      String?
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, read])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  tenantId    String?
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id])
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  action      String
+  entityType  String?
+  entityId    String?
+  diff        Json?
+  ip          String?
+  userAgent   String?
+  at          DateTime @default(now())
+
+  @@index([tenantId, at])
+  @@index([entityType, entityId])
+}
