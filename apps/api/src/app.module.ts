@@ -17,6 +17,10 @@ import { TimesheetModule } from './modules/timesheet/timesheet.module';
 import { OvertimeModule } from './modules/overtime/overtime.module';
 import { ExpenseModule } from './modules/expense/expense.module';
 import { TeamModule } from './modules/team/team.module';
+import { PayrollModule } from './modules/payroll/payroll.module';
+import { ReviewModule } from './modules/review/review.module';
+import { KnowledgeTestModule } from './modules/knowledge-test/knowledge-test.module';
+import { AlertsModule } from './modules/alerts/alerts.module';
 import { LegifranceModule } from './integrations/legifrance/legifrance.module';
 import { StorageModule } from './integrations/storage/storage.module';
 import { OcrModule } from './integrations/ocr/ocr.module';
@@ -51,6 +55,10 @@ import { EmailModule } from './integrations/email/email.module';
     OvertimeModule,
     ExpenseModule,
     TeamModule,
+    PayrollModule,
+    ReviewModule,
+    KnowledgeTestModule,
+    AlertsModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

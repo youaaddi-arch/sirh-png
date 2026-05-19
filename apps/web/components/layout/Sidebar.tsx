@@ -40,6 +40,7 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
     { href: '/reviews',   label: 'Entretiens', icon: Star },
     { href: '/trainings', label: 'Formation',  icon: BookOpen },
     { href: '/tests',     label: 'Tests',      icon: GraduationCap },
+    { href: '/alerts',    label: 'Alertes RH', icon: AlertCircle, roles: ['admin','rh','manager'] },
   ]},
   { title: 'Talents', items: [
     { href: '/recruitment', label: 'Recrutement', icon: Briefcase, roles: ['admin','rh','manager'] },
