@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Users, Calendar, Clock, Receipt, FileText,
   GraduationCap, Briefcase, Building2, Settings, Network, Star,
-  UserPlus, BarChart3, Mail, BookOpen, PenSquare, AlertCircle,
+  UserPlus, BarChart3, Mail, BookOpen, PenSquare, AlertCircle, Shield,
 } from 'lucide-react';
 
 const Sitemap = Network;
@@ -50,7 +50,8 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
   ]},
   { title: 'Référentiel', items: [
     { href: '/companies', label: 'Sociétés',   icon: Building2, roles: ['admin','rh'] },
-    { href: '/settings',  label: 'Paramètres', icon: Settings, roles: ['admin'] },
+    { href: '/rgpd',      label: 'RGPD',       icon: Shield,    roles: ['admin','rh'] },
+    { href: '/settings',  label: 'Paramètres', icon: Settings,  roles: ['admin'] },
   ]},
 ];
 

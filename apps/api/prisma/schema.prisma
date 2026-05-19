@@ -746,6 +746,51 @@ model KnowledgeTestAttempt {
   @@index([testId])
 }
 
+// ============================================================
+// RGPD — Article 30 (registre) et 20 (portabilité) — Sprint 9
+// ============================================================
+
+model ProcessingActivity {
+  id                  String   @id @default(cuid())
+  tenantId            String?
+  name                String   // "Gestion de la paie", "Recrutement", etc.
+  purpose             String   @db.Text
+  legalBasis          String   // contrat, obligation_legale, consentement, interet_legitime
+  dataCategories      Json     // tableau des catégories
+  dataSubjects        Json     // salariés, candidats, etc.
+  recipients          Json     // OPCO, URSSAF, mutuelle, etc.
+  retentionPeriod     String   // "5 ans après fin de contrat", etc.
+  securityMeasures    String?  @db.Text
+  transfersOutsideEU  Boolean  @default(false)
+  active              Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model DataExportRequest {
+  id          String   @id @default(cuid())
+  employeeId  String
+  type        String   // portability, deletion
+  status      String   @default("pending") // pending, completed, rejected
+  requestedAt DateTime @default(now())
+  completedAt DateTime?
+  archivePath String?
+  notes       String?
+}
+
+model ConsentRecord {
+  id            String   @id @default(cuid())
+  employeeId    String
+  consentType   String
+  granted       Boolean
+  grantedAt     DateTime @default(now())
+  withdrawnAt   DateTime?
+  ip            String?
+  userAgent     String?
+
+  @@index([employeeId])
+}
+
 model Onboarding {
   id              String           @id @default(cuid())
   employeeId      String           @unique

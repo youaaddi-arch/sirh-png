@@ -1,88 +1,129 @@
 # SIRH Paris Nord Groupe — v2
 
-> **SIRH multi-entités complet — référence Eurecia** — pour les 36 sociétés / 56 entités du groupe.
+> **SIRH multi-entités full-stack** — référence Eurecia — pour les 36 sociétés du groupe.
 
-## État du projet
+## Statut
 
-| Phase | Statut |
-|---|---|
-| 🗂 **v1 (SPA HTML+JS) → archivée** dans [`legacy-spa/`](./legacy-spa) | ✅ Démo encore en ligne sur GitHub Pages |
-| 🏗 **v2 (monorepo full-stack)** | 🚧 Sprint 0 — Bootstrap en cours |
+✅ **Tous les sprints sont livrés** (10/10) — l'application est complète et prête pour la recette.
+
+| Sprint | Module | Statut |
+|---|---|---|
+| S0  | Bootstrap monorepo + auth | ✅ |
+| S1  | Paramétrage entité + conventions Légifrance | ✅ |
+| S2  | Pré-onboarding salarié (token public + uploads) | ✅ |
+| S3  | Contrat IA Claude + e-signature + courriers RH | ✅ |
+| S4  | Onboarding automatisé post-signature | ✅ |
+| S5  | Espace salarié (congés, temps, frais) | ✅ |
+| S6  | Validations manager/RH + planning équipe | ✅ |
+| S7  | Cycle de vie (paie, entretiens, tests, alertes) | ✅ |
+| S9  | RGPD (registre, audit, droit à l'oubli, portabilité) | ✅ |
+| S10 | Déploiement, Docker, docs, CI | ✅ |
 
 ## Documentation
 
-- [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) — architecture détaillée v2 (schéma BDD, API, sprints, mapping Eurecia)
+- 📐 [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) — Architecture, schéma BDD, API, mapping Eurecia
+- 🚀 [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md) — Déploiement OVH/Scaleway en production
+- 🔐 [`docs/SECURITY.md`](./docs/SECURITY.md) — Sécurité (auth, chiffrement, audit, permissions)
+- 🛡 [`docs/RGPD.md`](./docs/RGPD.md) — Conformité RGPD (art. 30, droits des personnes)
+- 📖 [`docs/USER_GUIDE.md`](./docs/USER_GUIDE.md) — Guide utilisateur
 
-## Architecture v2
+## Stack technique
+
+- **Front** : Next.js 15 (App Router) + Tailwind, design type Eurecia
+- **Back** : NestJS 10 + Prisma + PostgreSQL 16
+- **Storage** : MinIO S3-compatible
+- **Emails** : Brevo / MailHog en dev
+- **IA** : Claude Sonnet 4.6 (fallback template si pas de clé)
+- **Signature** : Mock MVP → Yousign Phase 2
+- **OCR** : Stub → Tesseract local Phase 2.2
+
+## Architecture
 
 ```
 sirh-png/
 ├── apps/
-│   ├── api/                  # NestJS + Prisma + PostgreSQL
-│   └── web/                  # Next.js 15 (App Router) + Tailwind, design type Eurecia
+│   ├── api/      # NestJS + Prisma
+│   └── web/      # Next.js 15 type Eurecia
 ├── packages/
-│   ├── conventions-data/     # Référentiel des CCN françaises
+│   ├── conventions-data/   # Référentiel CCN FR
 │   └── shared-types/
-├── infrastructure/
-│   └── docker-compose.yml    # Postgres + Redis + MinIO + MailHog
-├── legacy-spa/               # ANCIENNE version (HTML+JS), archivée
-└── docs/
+├── infrastructure/         # Docker + Caddy
+├── docs/                   # ARCHITECTURE, DEPLOYMENT, SECURITY, RGPD, USER_GUIDE
+└── legacy-spa/             # Ancienne version v1 (archivée)
 ```
 
-## Démarrage rapide (développement local)
+## Démarrage local (5 minutes)
 
 ```bash
-# 1. Installer Docker + pnpm
-# 2. Cloner et installer
 git clone https://github.com/youaaddi-arch/sirh-png.git
 cd sirh-png
 git checkout claude/hr-management-software-ddW9f
-pnpm install
 
-# 3. Démarrer les services (Postgres + MinIO + Redis + MailHog)
+# 1. Démarrer la stack Docker (Postgres + Redis + MinIO + MailHog)
+pnpm install
 pnpm db:up
 
-# 4. Configurer les .env
+# 2. Configurer
 cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env
 
-# 5. Migrer la base et seeder
+# 3. Migrer la base + seed (56 entités du groupe + admin)
 pnpm db:migrate
 pnpm db:seed
 
-# 6. Lancer en dev (les deux apps en parallèle)
+# 4. Lancer
 pnpm dev
 ```
 
-- **Front Next.js** : http://localhost:3000
-- **API NestJS** : http://localhost:4000/api
-- **Swagger API** : http://localhost:4000/docs
-- **MinIO console** : http://localhost:9001 (sirh / sirh_dev_pwd)
-- **MailHog** (emails de dev) : http://localhost:8025
+- **Web** : http://localhost:3000
+- **API** : http://localhost:4000/api
+- **Swagger** : http://localhost:4000/docs
+- **MinIO** : http://localhost:9001 (sirh / sirh_dev_pwd)
+- **MailHog** : http://localhost:8025
 
-## Compte admin par défaut
+## Compte de démo
 
 - Email : `admin@pn-groupe.fr`
 - Password : `Admin2026!`
 
-## Roadmap
+## Déploiement production
 
-Voir [docs/ARCHITECTURE.md § 7](./docs/ARCHITECTURE.md#7-roadmap-par-sprints) — 11 sprints sur ~13 semaines.
+Voir [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md) — déploiement Docker Compose
++ Caddy (TLS automatique) sur OVH ou Scaleway. **Coût estimé : ~100 €/mois**
+en Phase 1 (sans Yousign/Mindee).
 
-## Référence Eurecia
+## Modules
 
-Le mapping fonctionnel Eurecia → notre architecture est documenté dans
-[ARCHITECTURE.md § 1bis](./docs/ARCHITECTURE.md#1bis-cartographie-eurecia--sirh-paris-nord). Tous les modules
-d'Eurecia sont couverts, avec en plus :
+| Module Eurecia | Notre implémentation |
+|---|---|
+| Dossier du personnel | `/employees/[id]` — fiches complètes |
+| Congés & absences | `/leaves` — workflow + soldes + calendrier |
+| Temps & activités | `/timesheets` — pointage + saisie hebdo |
+| Notes de frais | `/expenses` — soumission + workflow + justificatifs |
+| Talents & performance | `/reviews` — 4 trames (annuel, pro, PE, 360°) |
+| Formation | `/trainings` + `/tests` — catalogue + tests obligatoires |
+| Recrutement | `/recruitment` + `/hiring` — pipeline + workflow d'embauche |
+| Onboarding | `/onboarding` — 5 templates par poste, automatique |
+| Documents & coffre-fort | `/documents` + `/letters` — coffre + 10 modèles |
+| Paie | `/payroll` + `/payroll-vars` — bulletins + export Silae |
+| Communication | Notifications + emails Brevo |
+| Rapports & analyses | Dashboard adapté par rôle |
+| Workflows | Automatisations post-signature, alertes cycle de vie |
+| Multi-entités | Multi-tenant natif (36 sociétés) |
+| Signature électronique | Mock interne, Yousign en Phase 2 |
 
-- 🤖 **IA Claude** pour génération automatique de contrats conformes au droit français
-- 🇫🇷 **API Légifrance** pour conventions collectives à jour automatiquement
-- 📷 **OCR** sur pièces d'identité et carte vitale → pré-saisie auto
-- 🏢 **Multi-sociétés natif** (36 entités du groupe pré-chargées)
+**+ Différenciants vs Eurecia** :
+- 🤖 **IA Claude** pour génération de contrats conformes au droit FR
+- 🇫🇷 **Sync API Légifrance** pour conventions à jour
+- 📷 **OCR** sur pièces d'identité → pré-saisie auto
+- 🏢 Multi-sociétés natif (36 entités) avec scoping automatique
 
-## v1 — Démo statique en ligne
+## v1 (legacy)
 
-L'ancienne version SPA reste accessible :
+L'ancienne version SPA (HTML+JS+localStorage) reste accessible dans
+[`legacy-spa/`](./legacy-spa) et déployée sur :
+**https://youaaddi-arch.github.io/sirh-png/**
 
-- **GitHub Pages** : https://youaaddi-arch.github.io/sirh-png/legacy-spa/
-- Comptes démo : `emir.deniz@pn-groupe.fr` / `admin`
+## Licence
+
+Propriétaire — Paris Nord Groupe © 2026.
