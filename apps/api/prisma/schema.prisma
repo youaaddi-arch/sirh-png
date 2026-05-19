@@ -68,6 +68,7 @@ model Tenant {
   hireProcesses   HireProcess[]
   contracts       Contract[]
   letters         Letter[]
+  onboardingTemplates OnboardingTemplate[]
 }
 
 // ============================================================
@@ -217,6 +218,7 @@ model Employee {
   hireProcessOrigin      HireProcess?  @relation("HireProcessEmployee")
   contracts              Contract[]
   letters                Letter[]
+  onboarding             Onboarding?
 
   @@unique([tenantId, matricule])
   @@index([tenantId])
@@ -412,6 +414,41 @@ model ContractSignature {
   signatureData String?  @db.Text  // Base64 ou URL preuve
 
   @@index([contractId])
+}
+
+// ============================================================
+// Onboarding (Sprint 4)
+// ============================================================
+
+enum OnboardingStatus {
+  en_cours
+  termine
+  annule
+}
+
+model OnboardingTemplate {
+  id              String   @id @default(cuid())
+  tenantId        String?
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id])
+  name            String                              // ex: "Formateur", "Administratif"
+  appliesToJobs   Json?                               // tableau de motifs de jobTitle
+  tasks           Json                                // [{ id, name, category, daysAfterStart?, ownerRole? }]
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Onboarding {
+  id              String           @id @default(cuid())
+  employeeId      String           @unique
+  employee        Employee         @relation(fields: [employeeId], references: [id])
+  templateId      String?
+  template        OnboardingTemplate? @relation(fields: [templateId], references: [id])
+  startDate       DateTime
+  tasks           Json             // [{ id, name, category, done, dueDate, doneAt, doneById, ownerRole }]
+  status          OnboardingStatus @default(en_cours)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 }
 
 // ============================================================

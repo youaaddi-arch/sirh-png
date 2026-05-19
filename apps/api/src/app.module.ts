@@ -11,11 +11,13 @@ import { HiringModule } from './modules/hiring/hiring.module';
 import { PreboardingModule } from './modules/preboarding/preboarding.module';
 import { ContractModule } from './modules/contract/contract.module';
 import { LetterModule } from './modules/letter/letter.module';
+import { OnboardingModule } from './modules/onboarding/onboarding.module';
 import { LegifranceModule } from './integrations/legifrance/legifrance.module';
 import { StorageModule } from './integrations/storage/storage.module';
 import { OcrModule } from './integrations/ocr/ocr.module';
 import { ClaudeModule } from './integrations/claude/claude.module';
 import { SignatureModule } from './integrations/signature/signature.module';
+import { EmailModule } from './integrations/email/email.module';
 
 @Module({
   imports: [
@@ -29,14 +31,16 @@ import { SignatureModule } from './integrations/signature/signature.module';
     OcrModule,
     ClaudeModule,
     SignatureModule,
+    EmailModule,
     LegifranceModule,
     AuthModule,
     TenantModule,
     EmployeeModule,
     HiringModule,
     PreboardingModule,
-    ContractModule,
     LetterModule,
+    OnboardingModule,
+    ContractModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

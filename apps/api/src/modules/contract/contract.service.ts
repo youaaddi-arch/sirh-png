@@ -1,8 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { ClaudeService } from '../../integrations/claude/claude.service';
 import { SignatureService } from '../../integrations/signature/signature.service';
 import { LegifranceService } from '../../integrations/legifrance/legifrance.service';
+import { OnboardingService } from '../onboarding/onboarding.service';
 import { trialPeriodDays, annualLeaveDays, noticeDays } from '@sirh/conventions-data';
 import { SignContractDto } from './dto/contract.dto';
 
@@ -13,6 +14,8 @@ export class ContractService {
     private claude: ClaudeService,
     private signature: SignatureService,
     private legifrance: LegifranceService,
+    @Inject(forwardRef(() => OnboardingService))
+    private onboarding: OnboardingService,
   ) {}
 
   list(filters: { tenantId?: string; employeeId?: string; status?: string } = {}) {
@@ -226,6 +229,12 @@ export class ContractService {
             history: { push: { at: new Date().toISOString(), by: 'system', action: 'Contrat signé par les deux parties' } } as any,
           },
         }).catch(() => {});
+      }
+      // PROVISIONING AUTOMATIQUE (Sprint 4) si lié à un employé existant
+      if (c.employeeId) {
+        await this.onboarding.provisionAfterSignature(c.employeeId, 'system').catch((e) => {
+          console.error('Onboarding provisioning failed:', e);
+        });
       }
     } else if (dto.role === 'employee') {
       updates.status = 'signe_salarie';
