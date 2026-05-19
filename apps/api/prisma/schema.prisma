@@ -219,6 +219,11 @@ model Employee {
   contracts              Contract[]
   letters                Letter[]
   onboarding             Onboarding?
+  leaves                 Leave[]
+  leaveBalances          LeaveBalance[]
+  timesheets             Timesheet[]
+  overtimeRequests       OvertimeRequest[]
+  expenseReports         ExpenseReport[]
 
   @@unique([tenantId, matricule])
   @@index([tenantId])
@@ -436,6 +441,170 @@ model OnboardingTemplate {
   active          Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+// ============================================================
+// Congés, absences, temps, frais (Sprint 5)
+// ============================================================
+
+enum LeaveStatus {
+  en_attente
+  approuve
+  refuse
+  annule
+}
+
+model LeaveType {
+  id            String   @id @default(cuid())
+  tenantId      String?
+  code          String                            // CP, RTT, MAL, MAT, PAT, FAM, SS, TT
+  name          String
+  color         String   @default("#2447df")
+  annualDays    Int      @default(0)
+  paid          Boolean  @default(true)
+  requiresProof Boolean  @default(false)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  leaves        Leave[]
+  balances      LeaveBalance[]
+
+  @@unique([tenantId, code])
+}
+
+model Leave {
+  id              String      @id @default(cuid())
+  employeeId      String
+  employee        Employee    @relation(fields: [employeeId], references: [id])
+  typeId          String
+  type            LeaveType   @relation(fields: [typeId], references: [id])
+  startDate       DateTime
+  endDate         DateTime
+  days            Float
+  halfDayStart    Boolean     @default(false)
+  halfDayEnd      Boolean     @default(false)
+  reason          String?
+  status          LeaveStatus @default(en_attente)
+  approvedById    String?
+  approvedAt      DateTime?
+  rejectReason    String?
+  proofPath       String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([employeeId])
+  @@index([status])
+}
+
+model LeaveBalance {
+  id          String    @id @default(cuid())
+  employeeId  String
+  employee    Employee  @relation(fields: [employeeId], references: [id])
+  typeId      String
+  type        LeaveType @relation(fields: [typeId], references: [id])
+  year        Int
+  acquired    Float     @default(0)
+  taken       Float     @default(0)
+  pending     Float     @default(0)
+  scheduled   Float     @default(0)
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([employeeId, typeId, year])
+}
+
+enum TimesheetStatus {
+  en_attente
+  valide
+  refuse
+}
+
+model Timesheet {
+  id              String          @id @default(cuid())
+  employeeId      String
+  employee        Employee        @relation(fields: [employeeId], references: [id])
+  date            DateTime
+  startTime       String?
+  endTime         String?
+  breakMinutes    Int             @default(0)
+  hoursWorked     Float           @default(0)
+  hoursOvertime   Float           @default(0)
+  project         String?
+  notes           String?
+  status          TimesheetStatus @default(en_attente)
+  validatedById   String?
+  validatedAt     DateTime?
+  createdAt       DateTime        @default(now())
+
+  @@unique([employeeId, date])
+  @@index([employeeId])
+}
+
+enum OvertimeStatus {
+  en_attente
+  approuve
+  refuse
+}
+
+model OvertimeRequest {
+  id            String         @id @default(cuid())
+  employeeId    String
+  employee      Employee       @relation(fields: [employeeId], references: [id])
+  date          DateTime
+  hours         Float
+  reason        String
+  status        OvertimeStatus @default(en_attente)
+  approvedById  String?
+  approvedAt    DateTime?
+  rejectReason  String?
+  createdAt     DateTime       @default(now())
+
+  @@index([employeeId])
+  @@index([status])
+}
+
+enum ExpenseStatus {
+  brouillon
+  soumis
+  approuve
+  refuse
+  rembourse
+}
+
+model ExpenseReport {
+  id              String        @id @default(cuid())
+  employeeId      String
+  employee        Employee      @relation(fields: [employeeId], references: [id])
+  periodMonth     String        // YYYY-MM
+  status          ExpenseStatus @default(brouillon)
+  totalAmount     Float         @default(0)
+  submittedAt     DateTime?
+  approvedById    String?
+  approvedAt      DateTime?
+  rejectReason    String?
+  paidAt          DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  lines           ExpenseLine[]
+
+  @@index([employeeId])
+  @@index([status])
+}
+
+model ExpenseLine {
+  id            String        @id @default(cuid())
+  reportId      String
+  report        ExpenseReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  date          DateTime
+  category      String        // Repas, Transport, Hébergement, Fournitures, etc.
+  amount        Float
+  currency      String        @default("EUR")
+  vatAmount     Float?
+  description   String?
+  project       String?
+  receiptPath   String?
+
+  @@index([reportId])
 }
 
 model Onboarding {

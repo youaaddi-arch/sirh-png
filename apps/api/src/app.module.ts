@@ -12,6 +12,10 @@ import { PreboardingModule } from './modules/preboarding/preboarding.module';
 import { ContractModule } from './modules/contract/contract.module';
 import { LetterModule } from './modules/letter/letter.module';
 import { OnboardingModule } from './modules/onboarding/onboarding.module';
+import { LeaveModule } from './modules/leave/leave.module';
+import { TimesheetModule } from './modules/timesheet/timesheet.module';
+import { OvertimeModule } from './modules/overtime/overtime.module';
+import { ExpenseModule } from './modules/expense/expense.module';
 import { LegifranceModule } from './integrations/legifrance/legifrance.module';
 import { StorageModule } from './integrations/storage/storage.module';
 import { OcrModule } from './integrations/ocr/ocr.module';
@@ -41,6 +45,10 @@ import { EmailModule } from './integrations/email/email.module';
     LetterModule,
     OnboardingModule,
     ContractModule,
+    LeaveModule,
+    TimesheetModule,
+    OvertimeModule,
+    ExpenseModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
