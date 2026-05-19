@@ -7,6 +7,7 @@ import { HealthController } from './modules/health/health.controller';
 import { AuthModule } from './modules/auth/auth.module';
 import { TenantModule } from './modules/tenant/tenant.module';
 import { EmployeeModule } from './modules/employee/employee.module';
+import { LegifranceModule } from './integrations/legifrance/legifrance.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { EmployeeModule } from './modules/employee/employee.module';
     }]),
     PrismaModule,
     AuthModule,
+    LegifranceModule,
     TenantModule,
     EmployeeModule,
   ],
