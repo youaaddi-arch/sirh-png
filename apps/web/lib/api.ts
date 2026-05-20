@@ -1,6 +1,8 @@
-/* Client HTTP minimaliste avec injection automatique du token JWT */
+/* Client HTTP avec fallback automatique sur mock API si le back n'est pas joignable */
+import { mockApi } from './mock/api';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
+const USE_MOCK = !BASE_URL || BASE_URL.includes('placeholder');
 
 function getToken(): string | null {
   if (typeof window === 'undefined') return null;
@@ -12,35 +14,52 @@ function authHeaders(): Record<string, string> {
   return t ? { Authorization: `Bearer ${t}` } : {};
 }
 
-async function request<T = any>(path: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(BASE_URL + path, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...authHeaders(),
-      ...(options.headers || {}),
-    },
-  });
-  if (res.status === 401) {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('sirh.token');
-      localStorage.removeItem('sirh.user');
-      window.location.href = '/login';
+async function request<T = any>(method: string, path: string, body?: any): Promise<T> {
+  // Mock direct si on est en mode démo
+  if (USE_MOCK) {
+    try {
+      return mockApi(method, path, body) as T;
+    } catch (e: any) {
+      throw new Error(e.message || 'Erreur mock API');
     }
-    throw new Error('Non authentifié');
   }
-  const text = await res.text();
-  const data = text ? JSON.parse(text) : null;
-  if (!res.ok) {
-    const msg = data?.message || res.statusText;
-    throw new Error(Array.isArray(msg) ? msg.join(', ') : msg);
+
+  try {
+    const res = await fetch(BASE_URL + path, {
+      method,
+      body: body ? JSON.stringify(body) : undefined,
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders(),
+      },
+    });
+    if (res.status === 401) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('sirh.token');
+        localStorage.removeItem('sirh.user');
+        window.location.href = '/login';
+      }
+      throw new Error('Non authentifié');
+    }
+    const text = await res.text();
+    const data = text ? JSON.parse(text) : null;
+    if (!res.ok) {
+      const msg = data?.message || res.statusText;
+      throw new Error(Array.isArray(msg) ? msg.join(', ') : msg);
+    }
+    return data as T;
+  } catch (e: any) {
+    // Fallback automatique sur mock si le réseau échoue
+    if (e.message?.includes('fetch') || e.message?.includes('Failed') || e.name === 'TypeError') {
+      try { return mockApi(method, path, body) as T; } catch {}
+    }
+    throw e;
   }
-  return data as T;
 }
 
 export const api = {
-  get:  <T = any>(p: string) => request<T>(p),
-  post: <T = any>(p: string, body?: any) => request<T>(p, { method: 'POST', body: JSON.stringify(body) }),
-  patch:<T = any>(p: string, body?: any) => request<T>(p, { method: 'PATCH', body: JSON.stringify(body) }),
-  del:  <T = any>(p: string) => request<T>(p, { method: 'DELETE' }),
+  get:  <T = any>(p: string) => request<T>('GET', p),
+  post: <T = any>(p: string, body?: any) => request<T>('POST', p, body),
+  patch:<T = any>(p: string, body?: any) => request<T>('PATCH', p, body),
+  del:  <T = any>(p: string) => request<T>('DELETE', p),
 };
