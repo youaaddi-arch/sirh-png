@@ -4,26 +4,37 @@ import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Input, Select } from '@/components/ui/Input';
-import { ArrowLeft, Send } from 'lucide-react';
-import type { Tenant } from '@/types/tenant';
+import { ArrowLeft, Send, Copy, ExternalLink } from 'lucide-react';
+
+const CONTRACT_TYPES = [
+  { value: 'CDI', label: 'CDI — Contrat à durée indéterminée' },
+  { value: 'CDD', label: 'CDD — Contrat à durée déterminée' },
+  { value: 'Apprentissage', label: 'Apprentissage — Contrat d\'apprentissage' },
+  { value: 'Professionnalisation', label: 'Professionnalisation — Contrat de professionnalisation' },
+  { value: 'Stage', label: 'Stage' },
+  { value: 'Interim', label: 'Intérim' },
+  { value: 'Freelance', label: 'Freelance / Prestation' },
+];
 
 export default function NewHirePage() {
   const router = useRouter();
-  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [tenants, setTenants] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
   const [data, setData] = useState<any>({
     firstName: '', lastName: '', email: '',
     tenantId: '', jobTitle: '',
     contractType: 'CDI', statusClass: 'Employé',
     grossSalary: 2500, startDate: new Date().toISOString().slice(0, 10),
+    endDate: '',
     weeklyHours: 35, managerId: '',
+    apprenticeshipType: '',
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [created, setCreated] = useState<any>(null);
 
   useEffect(() => {
-    api.get<Tenant[]>('/tenants').then((list) => {
+    api.get<any[]>('/tenants').then((list) => {
       setTenants(list);
       if (list[0]) setData((d: any) => ({ ...d, tenantId: list[0].id }));
     });
@@ -42,6 +53,9 @@ export default function NewHirePage() {
     finally { setSaving(false); }
   }
 
+  const isApprenticeship = ['Apprentissage', 'Professionnalisation'].includes(data.contractType);
+  const isCdd = ['CDD', 'Stage', 'Interim'].includes(data.contractType);
+
   if (created) {
     const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/preboarding/${created.token}`;
     return (
@@ -51,15 +65,30 @@ export default function NewHirePage() {
           <CardHeader><CardTitle>Lien de pré-embauche à envoyer au candidat</CardTitle></CardHeader>
           <CardBody>
             <p className="text-sm text-slate-600 mb-3">
-              Le candidat <strong>{created.firstName} {created.lastName}</strong> recevra ce lien pour remplir ses infos et joindre ses pièces :
+              <strong>{created.firstName} {created.lastName}</strong> recevra ce lien pour remplir ses infos et joindre ses pièces :
             </p>
             <div className="bg-slate-50 border border-slate-200 rounded p-3 font-mono text-xs break-all mb-3">{url}</div>
             <div className="flex gap-2 flex-wrap">
-              <button onClick={() => navigator.clipboard.writeText(url)} className="btn btn-primary">Copier le lien</button>
-              <a href={url} target="_blank" rel="noopener" className="btn btn-secondary">Ouvrir comme candidat ➜</a>
-              <button onClick={() => router.push('/hiring')} className="btn btn-secondary">Retour à la liste</button>
+              <button onClick={() => { navigator.clipboard.writeText(url); alert('Lien copié !'); }} className="btn btn-primary">
+                <Copy className="w-4 h-4" /> Copier le lien
+              </button>
+              <a href={url} target="_blank" rel="noopener" className="btn btn-secondary">
+                <ExternalLink className="w-4 h-4" /> Ouvrir comme candidat
+              </a>
+              <button onClick={() => router.push('/hiring' as any)} className="btn btn-secondary">Retour à la liste</button>
             </div>
             <div className="mt-4 text-sm text-slate-500">📧 À envoyer à : <strong>{created.email}</strong></div>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle>Étapes suivantes (workflow embauche)</CardTitle></CardHeader>
+          <CardBody className="text-sm space-y-2">
+            <div>1. ⏳ <strong>En attente</strong> que le candidat remplisse ses infos et joigne les pièces (CV, ID, vitale, RIB, justif domicile)</div>
+            <div>2. 🔍 RH valide les pièces</div>
+            <div>3. 📝 Génération automatique du contrat avec IA + convention applicable</div>
+            <div>4. ✍ Envoi pour e-signature</div>
+            <div>5. 🎉 Finalisation = création du salarié + onboarding auto + envoi identifiants par email + DPAE</div>
           </CardBody>
         </Card>
       </div>
@@ -99,27 +128,42 @@ export default function NewHirePage() {
             </Select>
             <Input required label="Intitulé du poste" value={data.jobTitle} onChange={(e) => setData({ ...data, jobTitle: e.target.value })} />
             <Select label="Type de contrat" value={data.contractType} onChange={(e) => setData({ ...data, contractType: e.target.value })}>
-              <option value="CDI">CDI</option>
-              <option value="CDD">CDD</option>
-              <option value="Alternance">Alternance</option>
-              <option value="Stage">Stage</option>
+              {CONTRACT_TYPES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
             </Select>
             <Select label="Statut" value={data.statusClass} onChange={(e) => setData({ ...data, statusClass: e.target.value })}>
               <option value="Employé">Employé</option>
               <option value="Agent de maîtrise">Agent de maîtrise</option>
               <option value="Cadre">Cadre</option>
+              {isApprenticeship && <option value="Apprenti">Apprenti</option>}
             </Select>
-            <Input required type="number" label="Salaire brut mensuel (€)" value={data.grossSalary} onChange={(e) => setData({ ...data, grossSalary: e.target.value })} />
+            {isApprenticeship && (
+              <Select className="md:col-span-2" label="Diplôme préparé" value={data.apprenticeshipType} onChange={(e) => setData({ ...data, apprenticeshipType: e.target.value })}>
+                <option value="">— Sélectionner —</option>
+                <option value="CAP">CAP</option>
+                <option value="BAC_PRO">Bac Pro</option>
+                <option value="BTS">BTS</option>
+                <option value="LICENCE_PRO">Licence Pro</option>
+                <option value="MASTER">Master</option>
+                <option value="TITRE_PRO">Titre Pro RNCP</option>
+              </Select>
+            )}
+            <Input required type="number" label="Salaire brut mensuel (€)"
+                   value={data.grossSalary} onChange={(e) => setData({ ...data, grossSalary: e.target.value })}
+                   hint={isApprenticeship ? 'Pour apprentis : % SMIC selon âge et année du contrat' : undefined} />
             <Input type="number" min={1} max={48} label="Heures par semaine" value={data.weeklyHours} onChange={(e) => setData({ ...data, weeklyHours: e.target.value })} />
             <Input required type="date" label="Date de démarrage" value={data.startDate} onChange={(e) => setData({ ...data, startDate: e.target.value })} />
-            <Select label="Manager (responsable)" value={data.managerId} onChange={(e) => setData({ ...data, managerId: e.target.value })}>
+            {(isCdd || isApprenticeship) && (
+              <Input required type="date" label="Date de fin de contrat" value={data.endDate} onChange={(e) => setData({ ...data, endDate: e.target.value })} />
+            )}
+            <Select className="md:col-span-2" label="Manager (responsable hiérarchique — valideur des congés)"
+                    value={data.managerId} onChange={(e) => setData({ ...data, managerId: e.target.value })}>
               <option value="">—</option>
               {employees.map((e) => <option key={e.id} value={e.id}>{e.firstName} {e.lastName} — {e.jobTitle}</option>)}
             </Select>
           </div>
           <p className="text-xs text-slate-500 mt-3">
-            La période d'essai et les jours de congés annuels seront calculés automatiquement
-            selon la convention collective de la société d'affectation.
+            ⓘ La période d'essai et les jours de congés annuels seront calculés automatiquement selon la convention
+            collective de la société et le type de contrat sélectionné.
           </p>
         </CardBody>
       </Card>
