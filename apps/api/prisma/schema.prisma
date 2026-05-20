@@ -1,0 +1,848 @@
+// Sprint 0 — Bootstrap schema
+// Tables ajoutées progressivement par sprint suivant le doc d'architecture.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// Organisation = Groupe (ex: Paris Nord Groupe)
+// Tenant       = Société juridique (ex: 003-DBS, 014-PNFF…)
+// ============================================================
+
+model Organisation {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  logoUrl   String?
+  createdAt DateTime @default(now())
+  tenants   Tenant[]
+}
+
+model Tenant {
+  id              String  @id @default(cuid())
+  organisationId  String
+  organisation    Organisation @relation(fields: [organisationId], references: [id])
+  code            String  @unique          // "003-DBS"
+  name            String
+  type            String  @default("SIEGE") // SIEGE | ETS
+  siren           String?
+  siret           String?
+  apeCode         String?
+  urssafCode      String?
+  urssafName      String?
+  address         String?
+  repName         String?
+  repRole         String?
+
+  conventionCode  String? // FK Convention.code (referentiel global)
+
+  medicalProvider     Json?  // { name, address, phone, email, doctor }
+  healthInsurance     Json?  // { name, contract_number, phone, share_employer }
+  providentInsurance  Json?
+  pensionFund         Json?
+  workInjuryFund      Json?
+  apprenticeshipTax   Json?
+  cseRepresentative   String?
+  safetyOfficer       String?
+
+  fiscalYearStart String  @default("01-01")
+  defaultCurrency String  @default("EUR")
+  timezone        String  @default("Europe/Paris")
+  hoursPerDay     Float   @default(7.5)
+  weeklyHours     Float   @default(35.0)
+
+  active          Boolean @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  users           User[]
+  employees       Employee[]
+  departments     Department[]
+  auditLogs       AuditLog[]
+  hireProcesses   HireProcess[]
+  contracts       Contract[]
+  letters         Letter[]
+  onboardingTemplates OnboardingTemplate[]
+}
+
+// ============================================================
+// Référentiel des conventions collectives (global, non scopé tenant)
+// ============================================================
+
+model Convention {
+  code                    String  @id   // "IDCC_3249"
+  name                    String
+  brochure                String?
+  cpAnnuel                Int     @default(25)
+  paidSickFromDay         Int     @default(1)
+  trialPeriod             Json    // { CDI: { Employé:60, Cadre:120 }, CDD: { default:30 } }
+  trialRenewal            Json
+  notice                  Json
+  extraLeavesSeniority    Json    // { 5:1, 10:2 }
+  conventionalLeaves      Json    // { mariage:5, naissance:3 }
+  minimumWageCoef         Json?
+  legifranceUrl           String?
+  lastSyncAt              DateTime?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+
+// ============================================================
+// Utilisateurs et permissions
+// ============================================================
+
+enum Role {
+  admin
+  rh
+  paie
+  manager
+  employe
+}
+
+model User {
+  id                String   @id @default(cuid())
+  tenantId          String
+  tenant            Tenant   @relation(fields: [tenantId], references: [id])
+  email             String   @unique
+  passwordHash      String
+  role              Role     @default(employe)
+  twoFactorEnabled  Boolean  @default(false)
+  twoFactorSecret   String?
+  lastLoginAt       DateTime?
+  failedLoginCount  Int      @default(0)
+  lockedUntil       DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  employee              Employee?
+  auditLogs             AuditLog[]
+  notifications         Notification[]
+  hireProcessesCreated  HireProcess[] @relation("HireProcessCreator")
+  hireProcessesAssigned HireProcess[] @relation("HireProcessAssignee")
+
+  @@index([tenantId])
+}
+
+model Department {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  name        String
+  parentId    String?
+  parent      Department? @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  children    Department[] @relation("DepartmentHierarchy")
+  managerId   String?
+  employees   Employee[]
+
+  @@index([tenantId])
+}
+
+// ============================================================
+// Salariés — fiche complète
+// ============================================================
+
+enum EmployeeStatus {
+  actif
+  inactif
+  suspendu
+}
+
+model Employee {
+  id                String   @id @default(cuid())
+  tenantId          String
+  tenant            Tenant   @relation(fields: [tenantId], references: [id])
+  userId            String?  @unique
+  user              User?    @relation(fields: [userId], references: [id])
+  matricule         String
+
+  // Identité
+  civility          String?
+  firstName         String
+  lastName          String
+  maidenName        String?
+  nationality       String?
+  birthDate         DateTime?
+  birthPlace        String?
+  birthCountry      String?
+  socialSecurity    String?  // CHIFFRÉ en prod
+
+  // Coordonnées
+  email             String
+  phone             String?
+  address           String?
+  postalCode        String?
+  city              String?
+  country           String?
+
+  // Situation familiale
+  familySituation   String?  // celibataire/marie/pacs/divorce/veuf
+  numChildren       Int      @default(0)
+  emergencyName     String?
+  emergencyPhone    String?
+  rqth              Boolean  @default(false)
+
+  // Banque & Fiscal
+  iban              String?  // CHIFFRÉ en prod
+  bic               String?
+  bankName          String?
+  taxRate           Float?
+
+  // Carrière
+  jobTitle          String
+  departmentId     String?
+  department        Department? @relation(fields: [departmentId], references: [id])
+  managerId         String?
+  manager           Employee?   @relation("EmployeeManager", fields: [managerId], references: [id])
+  subordinates      Employee[]  @relation("EmployeeManager")
+  classification    String?   // Cadre/AM/Employé
+  coefficient       String?
+  contractType      String    @default("CDI")
+  contractStart     DateTime
+  contractEnd       DateTime?
+  weeklyHours       Float     @default(35.0)
+  grossSalary       Float     // CHIFFRÉ en prod
+
+  status            EmployeeStatus @default(actif)
+  photoUrl          String?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  hireProcessesAsManager HireProcess[] @relation("HireProcessManager")
+  hireProcessOrigin      HireProcess?  @relation("HireProcessEmployee")
+  contracts              Contract[]
+  letters                Letter[]
+  onboarding             Onboarding?
+  leaves                 Leave[]
+  leaveBalances          LeaveBalance[]
+  timesheets             Timesheet[]
+  overtimeRequests       OvertimeRequest[]
+  expenseReports         ExpenseReport[]
+  payrollVariables       PayrollVariable[]
+  payslips               Payslip[]
+  reviewsAsEmployee      Review[] @relation("ReviewEmployee")
+  reviewsAsReviewer      Review[] @relation("ReviewReviewer")
+  goals                  Goal[]
+  testAttempts           KnowledgeTestAttempt[]
+
+  @@unique([tenantId, matricule])
+  @@index([tenantId])
+  @@index([managerId])
+}
+
+// ============================================================
+// Audit & Notifications (système)
+// ============================================================
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String
+  title     String
+  body      String?
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, read])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  tenantId    String?
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id])
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  action      String
+  entityType  String?
+  entityId    String?
+  diff        Json?
+  ip          String?
+  userAgent   String?
+  at          DateTime @default(now())
+
+  @@index([tenantId, at])
+  @@index([entityType, entityId])
+}
+
+// ============================================================
+// Workflow d'embauche / Pré-onboarding (Sprint 2)
+// ============================================================
+
+enum HireStatus {
+  pre_embauche       // RH a créé le dossier, lien envoyé au candidat
+  soumis             // Candidat a soumis ses infos et pièces
+  valide             // RH a validé les pièces
+  contrat_genere     // Contrat généré (PDF)
+  contrat_signe      // Contrat signé (e-signature)
+  embauche           // Salarié créé, onboarding démarré
+  annule
+}
+
+model HireProcess {
+  id              String      @id @default(cuid())
+  tenantId        String
+  tenant          Tenant      @relation(fields: [tenantId], references: [id])
+  token           String      @unique  // URL publique
+  expiresAt       DateTime?
+
+  // Infos initiales saisies par RH
+  firstName       String
+  lastName        String
+  email           String
+  jobTitle        String
+  contractType    String      @default("CDI")
+  statusClass     String      @default("Employé")  // Cadre / AM / Employé
+  grossSalary     Float
+  startDate       DateTime
+  weeklyHours     Float       @default(35.0)
+  managerId       String?
+  manager         Employee?   @relation("HireProcessManager", fields: [managerId], references: [id])
+  assignedToId    String?
+  assignedTo      User?       @relation("HireProcessAssignee", fields: [assignedToId], references: [id])
+
+  status          HireStatus  @default(pre_embauche)
+
+  // Données saisies par le candidat (étape 1)
+  draftData       Json?       // toutes infos du formulaire candidat
+  ocrExtracted    Json?       // résultats OCR Mindee/Tesseract
+
+  // Résultats finaux
+  employeeId      String?     @unique  // créé à la finalisation
+  employee        Employee?   @relation("HireProcessEmployee", fields: [employeeId], references: [id])
+
+  history         Json?       // [{ at, by, action }]
+
+  createdById     String?
+  createdBy       User?       @relation("HireProcessCreator", fields: [createdById], references: [id])
+  createdAt       DateTime    @default(now())
+  submittedAt     DateTime?
+  validatedAt     DateTime?
+  finalizedAt     DateTime?
+
+  documents       HireProcessDocument[]
+
+  @@index([tenantId])
+  @@index([status])
+}
+
+model HireProcessDocument {
+  id              String      @id @default(cuid())
+  hireProcessId   String
+  hireProcess     HireProcess @relation(fields: [hireProcessId], references: [id], onDelete: Cascade)
+
+  // Type de doc : cv | id_card | vital_card | rib | diploma | residence_proof | photo | mutuelle | autre
+  key             String
+  filename        String
+  size            Int
+  mimeType        String
+  storagePath     String      // ex. preboarding/{processId}/cv-xxx.pdf
+  storageBucket   String      @default("sirh-preboarding")
+
+  uploadedAt      DateTime    @default(now())
+  validatedAt     DateTime?
+  validatedById   String?
+  rejectedReason  String?
+
+  @@index([hireProcessId])
+  @@index([hireProcessId, key])
+}
+
+// ============================================================
+// Contrats de travail (Sprint 3)
+// ============================================================
+
+enum ContractStatus {
+  brouillon          // Généré, pas encore envoyé
+  envoye             // Envoyé pour signature
+  signe_salarie      // Signé par le salarié uniquement
+  signe              // Signé par les deux parties
+  actif              // Contrat actif (post-embauche)
+  termine            // Contrat échu / rompu
+  annule
+}
+
+model Contract {
+  id                  String         @id @default(cuid())
+  tenantId            String
+  tenant              Tenant         @relation(fields: [tenantId], references: [id])
+  employeeId          String?
+  employee            Employee?      @relation(fields: [employeeId], references: [id])
+  hireProcessId       String?
+
+  type                String         @default("CDI")      // CDI / CDD / Alternance / Stage / Freelance
+  position            String
+  statusClass         String                              // Cadre / Agent de maîtrise / Employé
+  classification      String?
+  coefficient         String?
+  weeklyHours         Float          @default(35.0)
+  grossSalary         Float
+  startDate           DateTime
+  endDate             DateTime?
+  trialPeriodDays     Int            @default(0)
+  trialRenewalDays    Int            @default(0)
+  noticeDays          Int            @default(30)
+
+  contentMd           String         @db.Text             // Markdown du contrat
+  contentPdfPath      String?                             // Path du PDF généré
+  generatedByAi       Boolean        @default(false)
+  aiModel             String?
+  aiPromptVersion     String?
+
+  status              ContractStatus @default(brouillon)
+  sentAt              DateTime?
+  signedEmployeeAt    DateTime?
+  signedEmployerAt    DateTime?
+  signedById          String?
+
+  createdById         String?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  signatures          ContractSignature[]
+
+  @@index([tenantId])
+  @@index([employeeId])
+  @@index([status])
+}
+
+model ContractSignature {
+  id            String   @id @default(cuid())
+  contractId    String
+  contract      Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  signerRole    String   // 'employee' | 'employer'
+  signerName    String
+  signerEmail   String
+  signedAt      DateTime @default(now())
+  signedIp      String?
+  signatureData String?  @db.Text  // Base64 ou URL preuve
+
+  @@index([contractId])
+}
+
+// ============================================================
+// Onboarding (Sprint 4)
+// ============================================================
+
+enum OnboardingStatus {
+  en_cours
+  termine
+  annule
+}
+
+model OnboardingTemplate {
+  id              String   @id @default(cuid())
+  tenantId        String?
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id])
+  name            String                              // ex: "Formateur", "Administratif"
+  appliesToJobs   Json?                               // tableau de motifs de jobTitle
+  tasks           Json                                // [{ id, name, category, daysAfterStart?, ownerRole? }]
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  onboardings     Onboarding[]
+}
+
+// ============================================================
+// Congés, absences, temps, frais (Sprint 5)
+// ============================================================
+
+enum LeaveStatus {
+  en_attente
+  approuve
+  refuse
+  annule
+}
+
+model LeaveType {
+  id            String   @id @default(cuid())
+  tenantId      String?
+  code          String                            // CP, RTT, MAL, MAT, PAT, FAM, SS, TT
+  name          String
+  color         String   @default("#2447df")
+  annualDays    Int      @default(0)
+  paid          Boolean  @default(true)
+  requiresProof Boolean  @default(false)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  leaves        Leave[]
+  balances      LeaveBalance[]
+
+  @@unique([tenantId, code])
+}
+
+model Leave {
+  id              String      @id @default(cuid())
+  employeeId      String
+  employee        Employee    @relation(fields: [employeeId], references: [id])
+  typeId          String
+  type            LeaveType   @relation(fields: [typeId], references: [id])
+  startDate       DateTime
+  endDate         DateTime
+  days            Float
+  halfDayStart    Boolean     @default(false)
+  halfDayEnd      Boolean     @default(false)
+  reason          String?
+  status          LeaveStatus @default(en_attente)
+  approvedById    String?
+  approvedAt      DateTime?
+  rejectReason    String?
+  proofPath       String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([employeeId])
+  @@index([status])
+}
+
+model LeaveBalance {
+  id          String    @id @default(cuid())
+  employeeId  String
+  employee    Employee  @relation(fields: [employeeId], references: [id])
+  typeId      String
+  type        LeaveType @relation(fields: [typeId], references: [id])
+  year        Int
+  acquired    Float     @default(0)
+  taken       Float     @default(0)
+  pending     Float     @default(0)
+  scheduled   Float     @default(0)
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([employeeId, typeId, year])
+}
+
+enum TimesheetStatus {
+  en_attente
+  valide
+  refuse
+}
+
+model Timesheet {
+  id              String          @id @default(cuid())
+  employeeId      String
+  employee        Employee        @relation(fields: [employeeId], references: [id])
+  date            DateTime
+  startTime       String?
+  endTime         String?
+  breakMinutes    Int             @default(0)
+  hoursWorked     Float           @default(0)
+  hoursOvertime   Float           @default(0)
+  project         String?
+  notes           String?
+  status          TimesheetStatus @default(en_attente)
+  validatedById   String?
+  validatedAt     DateTime?
+  createdAt       DateTime        @default(now())
+
+  @@unique([employeeId, date])
+  @@index([employeeId])
+}
+
+enum OvertimeStatus {
+  en_attente
+  approuve
+  refuse
+}
+
+model OvertimeRequest {
+  id            String         @id @default(cuid())
+  employeeId    String
+  employee      Employee       @relation(fields: [employeeId], references: [id])
+  date          DateTime
+  hours         Float
+  reason        String
+  status        OvertimeStatus @default(en_attente)
+  approvedById  String?
+  approvedAt    DateTime?
+  rejectReason  String?
+  createdAt     DateTime       @default(now())
+
+  @@index([employeeId])
+  @@index([status])
+}
+
+enum ExpenseStatus {
+  brouillon
+  soumis
+  approuve
+  refuse
+  rembourse
+}
+
+model ExpenseReport {
+  id              String        @id @default(cuid())
+  employeeId      String
+  employee        Employee      @relation(fields: [employeeId], references: [id])
+  periodMonth     String        // YYYY-MM
+  status          ExpenseStatus @default(brouillon)
+  totalAmount     Float         @default(0)
+  submittedAt     DateTime?
+  approvedById    String?
+  approvedAt      DateTime?
+  rejectReason    String?
+  paidAt          DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  lines           ExpenseLine[]
+
+  @@index([employeeId])
+  @@index([status])
+}
+
+model ExpenseLine {
+  id            String        @id @default(cuid())
+  reportId      String
+  report        ExpenseReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  date          DateTime
+  category      String        // Repas, Transport, Hébergement, Fournitures, etc.
+  amount        Float
+  currency      String        @default("EUR")
+  vatAmount     Float?
+  description   String?
+  project       String?
+  receiptPath   String?
+
+  @@index([reportId])
+}
+
+// ============================================================
+// Paie (Sprint 7)
+// ============================================================
+
+model PayrollVariable {
+  id            String   @id @default(cuid())
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id])
+  month         String   // YYYY-MM
+  type          String   // prime | retenue | indemnite
+  label         String
+  amount        Float
+  createdAt     DateTime @default(now())
+
+  @@index([employeeId, month])
+}
+
+model Payslip {
+  id              String   @id @default(cuid())
+  employeeId      String
+  employee        Employee @relation(fields: [employeeId], references: [id])
+  month           String   // YYYY-MM
+  gross           Float
+  socialCharges   Float
+  net             Float
+  employerCost    Float
+  pdfPath         String?
+  status          String   @default("edite") // edite, envoye
+  createdAt       DateTime @default(now())
+
+  @@unique([employeeId, month])
+  @@index([month])
+}
+
+// ============================================================
+// Entretiens (Sprint 7)
+// ============================================================
+
+enum ReviewStatus {
+  planifie
+  en_cours
+  realise
+  signe
+  annule
+}
+
+model Review {
+  id                  String       @id @default(cuid())
+  employeeId          String
+  employee            Employee     @relation("ReviewEmployee", fields: [employeeId], references: [id])
+  reviewerId          String?
+  reviewer            Employee?    @relation("ReviewReviewer", fields: [reviewerId], references: [id])
+
+  type                String       // annuel | professionnel | periode_essai | 360
+  periodStart         DateTime?
+  periodEnd           DateTime?
+  scheduledAt         DateTime?
+  completedAt         DateTime?
+
+  // Trame d'évaluation (Json)
+  formData            Json?        // { sections: [{ title, questions: [{ key, label, type, answer }] }] }
+  overallRating       Int?         // 1-5
+  strengths           String?      @db.Text
+  improvements        String?      @db.Text
+  comments            String?      @db.Text
+
+  signedEmployeeAt    DateTime?
+  signedReviewerAt    DateTime?
+
+  status              ReviewStatus @default(planifie)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  goals               Goal[]
+
+  @@index([employeeId])
+  @@index([status])
+}
+
+model Goal {
+  id            String   @id @default(cuid())
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id])
+  reviewId      String?
+  review        Review?  @relation(fields: [reviewId], references: [id])
+  title         String
+  description   String?  @db.Text
+  targetDate    DateTime?
+  progress      Int      @default(0)
+  status        String   @default("en_cours") // en_cours, atteint, abandonne
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([employeeId])
+}
+
+// ============================================================
+// Tests de connaissances (Qualiopi, sécurité, RGPD) — Sprint 7
+// ============================================================
+
+model KnowledgeTest {
+  id                String   @id @default(cuid())
+  tenantId          String?
+  title             String
+  category          String   // securite, rgpd, qualiopi, technique
+  description       String?  @db.Text
+  questions         Json     // [{ question, options:[], correctIndex, explanation? }]
+  passingScore      Int      @default(70)   // %
+  validityMonths    Int      @default(12)
+  mandatoryForJobs  Json?    // tableau regex
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now())
+
+  attempts          KnowledgeTestAttempt[]
+}
+
+model KnowledgeTestAttempt {
+  id            String         @id @default(cuid())
+  testId        String
+  test          KnowledgeTest  @relation(fields: [testId], references: [id])
+  employeeId    String
+  employee      Employee       @relation(fields: [employeeId], references: [id])
+  startedAt     DateTime       @default(now())
+  completedAt   DateTime?
+  score         Int?
+  passed        Boolean        @default(false)
+  answers       Json?
+  expiresAt     DateTime?
+
+  @@index([employeeId])
+  @@index([testId])
+}
+
+// ============================================================
+// RGPD — Article 30 (registre) et 20 (portabilité) — Sprint 9
+// ============================================================
+
+model ProcessingActivity {
+  id                  String   @id @default(cuid())
+  tenantId            String?
+  name                String   // "Gestion de la paie", "Recrutement", etc.
+  purpose             String   @db.Text
+  legalBasis          String   // contrat, obligation_legale, consentement, interet_legitime
+  dataCategories      Json     // tableau des catégories
+  dataSubjects        Json     // salariés, candidats, etc.
+  recipients          Json     // OPCO, URSSAF, mutuelle, etc.
+  retentionPeriod     String   // "5 ans après fin de contrat", etc.
+  securityMeasures    String?  @db.Text
+  transfersOutsideEU  Boolean  @default(false)
+  active              Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model DataExportRequest {
+  id          String   @id @default(cuid())
+  employeeId  String
+  type        String   // portability, deletion
+  status      String   @default("pending") // pending, completed, rejected
+  requestedAt DateTime @default(now())
+  completedAt DateTime?
+  archivePath String?
+  notes       String?
+}
+
+model ConsentRecord {
+  id            String   @id @default(cuid())
+  employeeId    String
+  consentType   String
+  granted       Boolean
+  grantedAt     DateTime @default(now())
+  withdrawnAt   DateTime?
+  ip            String?
+  userAgent     String?
+
+  @@index([employeeId])
+}
+
+model Onboarding {
+  id              String           @id @default(cuid())
+  employeeId      String           @unique
+  employee        Employee         @relation(fields: [employeeId], references: [id])
+  templateId      String?
+  template        OnboardingTemplate? @relation(fields: [templateId], references: [id])
+  startDate       DateTime
+  tasks           Json             // [{ id, name, category, done, dueDate, doneAt, doneById, ownerRole }]
+  status          OnboardingStatus @default(en_cours)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+// ============================================================
+// Courriers RH (Sprint 3)
+// ============================================================
+
+enum LetterStatus {
+  redige
+  envoye
+  signe
+  archive
+}
+
+model Letter {
+  id              String       @id @default(cuid())
+  tenantId        String
+  tenant          Tenant       @relation(fields: [tenantId], references: [id])
+  employeeId      String?
+  employee        Employee?    @relation(fields: [employeeId], references: [id])
+  hireProcessId   String?
+
+  type            String       // attestation_employeur | certificat_travail | promesse_embauche |
+                               // avertissement | felicitations | rupture_conventionnelle |
+                               // augmentation | convocation_visite_medicale | affiliation_mutuelle | refus_conge
+  subject         String
+  contentMd       String       @db.Text
+  contentPdfPath  String?
+
+  date            DateTime     @default(now())
+  status          LetterStatus @default(redige)
+
+  recipientEmail  String?
+  sentAt          DateTime?
+  signedAt        DateTime?
+
+  createdById     String?
+  createdAt       DateTime     @default(now())
+
+  @@index([tenantId])
+  @@index([employeeId])
+  @@index([type])
+}
