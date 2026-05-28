@@ -1,0 +1,52 @@
+name: Deploy site-formation (GitHub Pages)
+
+on:
+  push:
+    branches:
+      - claude/lucid-dijkstra-P4wwt
+    paths:
+      - "site-formation/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble le site (SIRH à la racine + PNBS sur /site-formation/)
+        run: |
+          mkdir -p _site
+          # Démo SIRH conservée à la racine (inchangée)
+          cp index.html _site/index.html || true
+          cp .nojekyll _site/.nojekyll || true
+          cp -r legacy-spa _site/legacy-spa
+          # Nouveau site PNBS
+          cp -r site-formation _site/site-formation
+          # Raccourci : /pnbs/ -> site PNBS
+          cp -r site-formation _site/pnbs
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
