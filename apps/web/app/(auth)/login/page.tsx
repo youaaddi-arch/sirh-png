@@ -41,6 +41,7 @@ export default function LoginPage() {
               <div>
                 <div className="text-2xl font-bold" style={{ fontFamily: 'Georgia, serif' }}>PaNo</div>
                 <div className="text-brand-100 text-xs tracking-wider">by PARIS NORD GROUPE</div>
+                <div className="text-brand-200 text-[10px] uppercase tracking-widest font-semibold mt-1">Système d'Information RH</div>
               </div>
             </div>
             <h2 className="text-3xl font-bold leading-tight mb-4">Bienvenue sur votre espace RH.</h2>

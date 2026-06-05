@@ -65,6 +65,7 @@ export function Sidebar({ role = 'admin' }: { role?: string }) {
           <div>
             <div className="font-bold text-[20px] leading-none" style={{ fontFamily: 'Georgia, serif', color: '#0f1f4d' }}>PaNo</div>
             <div className="text-[10px] text-brand-700 mt-0.5 tracking-wider">PARIS NORD GROUPE</div>
+            <div className="text-[10px] text-slate-500 mt-1 font-semibold uppercase tracking-wider">SIRH</div>
           </div>
         </div>
       </div>
