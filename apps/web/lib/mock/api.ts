@@ -290,7 +290,10 @@ export function mockApi(method: string, path: string, body?: any): any {
 
   // ==== CONTRACTS ====
   if (method === 'GET' && p === '/contracts') {
-    return s.contracts.map((c) => ({
+    let list = s.contracts;
+    if (q.employeeId) list = list.filter((c) => c.employeeId === q.employeeId);
+    if (q.tenantId) list = list.filter((c) => c.tenantId === q.tenantId);
+    return list.map((c) => ({
       ...c,
       tenant: s.tenants.find((t) => t.id === c.tenantId),
       employee: s.employees.find((e) => e.id === c.employeeId),
@@ -329,6 +332,57 @@ export function mockApi(method: string, path: string, body?: any): any {
     if (!c) throw new Error('Not found');
     c.status = 'envoye'; c.sentAt = new Date().toISOString();
     save(s); return c;
+  }
+  if (method === 'POST' && p === '/contracts') {
+    const c = {
+      id: uid('ct'),
+      status: body.status || 'brouillon',
+      generatedByAi: false,
+      signatures: [],
+      createdAt: new Date().toISOString(),
+      ...body,
+    };
+    s.contracts.push(c); audit(s, 'CREATE', 'contract', c.id); save(s); return c;
+  }
+  if (method === 'POST' && p === '/contracts/avenant') {
+    const emp = s.employees.find((e) => e.id === body.employeeId);
+    if (!emp) throw new Error('Salarié introuvable');
+    const tenant = s.tenants.find((t) => t.id === emp.tenantId);
+    const previous = [...s.contracts].filter((c) => c.employeeId === emp.id).sort((a, b) => (b.startDate || '').localeCompare(a.startDate || ''))[0];
+    const changes = body.changes || {};
+    const reason = body.reason || 'Modification des conditions du contrat';
+    const c = {
+      id: uid('av'),
+      employeeId: emp.id,
+      tenantId: emp.tenantId,
+      parentContractId: previous?.id,
+      type: 'Avenant',
+      position: changes.jobTitle ?? emp.jobTitle,
+      statusClass: changes.classification ?? emp.classification,
+      weeklyHours: changes.weeklyHours ?? emp.weeklyHours,
+      grossSalary: changes.grossSalary ?? emp.grossSalary,
+      contractType: changes.contractType ?? emp.contractType,
+      workTime: changes.workTime ?? emp.workTime,
+      startDate: body.effectiveDate || new Date().toISOString().slice(0, 10),
+      reason,
+      changes,
+      previous: previous ? {
+        jobTitle: previous.position,
+        grossSalary: previous.grossSalary,
+        weeklyHours: previous.weeklyHours,
+        contractType: previous.type,
+      } : {
+        jobTitle: emp.jobTitle,
+        grossSalary: emp.grossSalary,
+        weeklyHours: emp.weeklyHours,
+        contractType: emp.contractType,
+      },
+      contentMd: `# AVENANT AU CONTRAT DE TRAVAIL\n\nEntre **${tenant?.name || ''}** et **${emp.firstName} ${emp.lastName}**.\n\n**Motif :** ${reason}\n\n**Date d'effet :** ${body.effectiveDate || new Date().toISOString().slice(0, 10)}\n\n## Modifications apportées\n\n${Object.entries(changes).map(([k, v]) => `- **${k}** : ${v}`).join('\n')}\n\n_Toutes les autres clauses du contrat initial demeurent inchangées._`,
+      status: 'brouillon',
+      signatures: [],
+      createdAt: new Date().toISOString(),
+    };
+    s.contracts.push(c); audit(s, 'CREATE', 'avenant', c.id); save(s); return c;
   }
   if (method === 'POST' && /^\/contracts\/[^/]+\/sign$/.test(p)) {
     const id = p.split('/')[2];
@@ -640,7 +694,9 @@ export function mockApi(method: string, path: string, body?: any): any {
   if (method === 'GET' && /^\/knowledge-tests\/attempts\/by-employee\/[^/]+$/.test(p)) return [];
 
   if (method === 'GET' && p === '/reviews') {
-    return s.reviews.map((r) => ({
+    let list = s.reviews;
+    if (q.employeeId) list = list.filter((r) => r.employeeId === q.employeeId);
+    return list.map((r) => ({
       ...r,
       employee: s.employees.find((e) => e.id === r.employeeId),
       reviewer: s.employees.find((e) => e.id === r.reviewerId),
@@ -658,7 +714,9 @@ export function mockApi(method: string, path: string, body?: any): any {
   }
 
   if (method === 'GET' && p === '/letters') {
-    return s.letters.map((l) => ({
+    let list = s.letters;
+    if (q.employeeId) list = list.filter((l) => l.employeeId === q.employeeId);
+    return list.map((l) => ({
       ...l, employee: s.employees.find((e) => e.id === l.employeeId),
     }));
   }
