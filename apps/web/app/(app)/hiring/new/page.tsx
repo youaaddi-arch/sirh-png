@@ -43,6 +43,11 @@ export default function NewHirePage() {
     endDate: '',
     managerId: '',
     apprenticeshipType: '',
+    // Période d'essai
+    trialPeriodDays: 60,
+    trialRenewable: true,
+    trialRenewalDays: 60,
+    trialNoticeBeforeDays: 15,
     // Planning hebdomadaire type
     schedule: {
       lundi:    { start: '09:00', end: '17:30', break: 60 },
@@ -250,6 +255,38 @@ export default function NewHirePage() {
             {(isCdd || isApprenticeship) && (
               <Input required type="date" label="Date de fin de contrat" value={data.endDate} onChange={(e) => setData({ ...data, endDate: e.target.value })} />
             )}
+          </div>
+
+          {/* Période d'essai */}
+          <div className="mt-6 pt-6 border-t border-slate-200">
+            <h3 className="font-semibold mb-3">Période d'essai</h3>
+            <div className="grid md:grid-cols-2 gap-4">
+              <Input type="number" min={0} max={365} label="Durée période d'essai (jours)" value={data.trialPeriodDays} onChange={(e) => setData({ ...data, trialPeriodDays: +e.target.value })}
+                hint={`CDI : Employé 60j, AM 90j, Cadre 120j. CDD : 30j. Apprentissage : 45j.`} />
+              <Input type="date" label="Date de fin de période d'essai (calculée)" readOnly
+                value={data.startDate ? new Date(new Date(data.startDate).getTime() + data.trialPeriodDays * 86400000).toISOString().slice(0, 10) : ''}
+                className="bg-slate-50" />
+              <div className="md:col-span-2">
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={data.trialRenewable} onChange={(e) => setData({ ...data, trialRenewable: e.target.checked })} />
+                  <span className="text-sm">Période d'essai renouvelable une fois</span>
+                </label>
+              </div>
+              {data.trialRenewable && (
+                <>
+                  <Input type="number" min={0} max={365} label="Durée du renouvellement (jours)" value={data.trialRenewalDays} onChange={(e) => setData({ ...data, trialRenewalDays: +e.target.value })}
+                    hint="Doit être notifié au salarié AVANT la fin de la période d'essai initiale" />
+                  <Input type="number" min={0} max={60} label="Délai minimum pour notifier le renouvellement (jours)" value={data.trialNoticeBeforeDays} onChange={(e) => setData({ ...data, trialNoticeBeforeDays: +e.target.value })}
+                    hint="Ex : 15 jours = il faut notifier 15j avant la fin de la PE initiale" />
+                  <Input type="date" label="Date limite pour notifier le renouvellement" readOnly
+                    value={data.startDate ? new Date(new Date(data.startDate).getTime() + (data.trialPeriodDays - data.trialNoticeBeforeDays) * 86400000).toISOString().slice(0, 10) : ''}
+                    className="bg-slate-50" />
+                  <Input type="date" label="Date de fin si renouvelée" readOnly
+                    value={data.startDate ? new Date(new Date(data.startDate).getTime() + (data.trialPeriodDays + data.trialRenewalDays) * 86400000).toISOString().slice(0, 10) : ''}
+                    className="bg-slate-50" />
+                </>
+              )}
+            </div>
           </div>
         </CardBody>
       </Card>
