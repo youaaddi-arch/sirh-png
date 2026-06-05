@@ -59,12 +59,12 @@ export function Sidebar({ role = 'admin' }: { role?: string }) {
   const pathname = usePathname();
   return (
     <aside className="w-60 bg-brand-950 text-slate-200 hidden md:flex flex-col h-screen sticky top-0">
-      <div className="p-4 border-b border-brand-900">
+      <div className="p-4 border-b border-brand-900 bg-white">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-white text-brand-700 flex items-center justify-center font-bold">PN</div>
+          <img src="/logo-mark.svg" alt="PaNo" className="w-10 h-10" />
           <div>
-            <div className="font-semibold text-white">Paris Nord Groupe</div>
-            <div className="text-[11px] text-brand-200">SIRH multi-entités</div>
+            <div className="font-bold text-[20px] leading-none" style={{ fontFamily: 'Georgia, serif', color: '#0f1f4d' }}>PaNo</div>
+            <div className="text-[10px] text-brand-700 mt-0.5 tracking-wider">PARIS NORD GROUPE</div>
           </div>
         </div>
       </div>

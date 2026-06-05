@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-65 -65 130 130" width="64" height="64">
+  <!-- Gold half (top + right) -->
+  <polygon points="0,-58 12,-12 0,0" fill="#c9a04f"/>
+  <polygon points="58,0 12,12 0,0" fill="#c9a04f"/>
+  <polygon points="58,0 12,-12 0,0" fill="#c9a04f"/>
+  <!-- Navy half (bottom + left + top-left) -->
+  <polygon points="0,58 -12,12 0,0" fill="#1e2f7e"/>
+  <polygon points="0,58 12,12 0,0" fill="#1e2f7e"/>
+  <polygon points="-58,0 -12,-12 0,0" fill="#1e2f7e"/>
+  <polygon points="-58,0 -12,12 0,0" fill="#1e2f7e"/>
+  <polygon points="0,-58 -12,-12 0,0" fill="#1e2f7e"/>
+</svg>

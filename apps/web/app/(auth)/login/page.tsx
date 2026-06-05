@@ -37,10 +37,10 @@ export default function LoginPage() {
         <div className="bg-gradient-to-br from-brand-600 to-brand-900 text-white p-10 hidden md:flex flex-col justify-between">
           <div>
             <div className="flex items-center gap-3 mb-8">
-              <div className="w-12 h-12 rounded-xl bg-white text-brand-700 flex items-center justify-center font-bold text-xl">PN</div>
+              <img src="/logo-mark.svg" alt="PaNo" className="w-14 h-14 bg-white rounded-xl p-2" />
               <div>
-                <div className="text-xl font-bold">Paris Nord Groupe</div>
-                <div className="text-brand-100 text-sm">SIRH multi-entités — v2</div>
+                <div className="text-2xl font-bold" style={{ fontFamily: 'Georgia, serif' }}>PaNo</div>
+                <div className="text-brand-100 text-xs tracking-wider">by PARIS NORD GROUPE</div>
               </div>
             </div>
             <h2 className="text-3xl font-bold leading-tight mb-4">Bienvenue sur votre espace RH.</h2>
