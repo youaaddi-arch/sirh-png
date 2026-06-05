@@ -37,6 +37,8 @@ export default function NewHirePage() {
     // Poste
     tenantId: '', jobTitle: '', contractType: 'CDI',
     statusClass: 'Employé', hierarchyLevel: 'N',
+    workTime: 'temps_complet',
+    partTimePercent: 80,
     grossSalary: 2500, startDate: new Date().toISOString().slice(0, 10),
     endDate: '',
     managerId: '',
@@ -230,6 +232,15 @@ export default function NewHirePage() {
             <Select label="Niveau hiérarchique" value={data.hierarchyLevel} onChange={(e) => setData({ ...data, hierarchyLevel: e.target.value })}>
               {NIVEAUX_HIERARCHIQUES.map((n) => <option key={n} value={n}>{n}</option>)}
             </Select>
+            <Select label="Temps de travail" value={data.workTime} onChange={(e) => setData({ ...data, workTime: e.target.value })}>
+              <option value="temps_complet">Temps complet</option>
+              <option value="temps_partiel">Temps partiel</option>
+            </Select>
+            {data.workTime === 'temps_partiel' && (
+              <Input type="number" min={10} max={99} label="Pourcentage du temps partiel (%)" value={data.partTimePercent} onChange={(e) => setData({ ...data, partTimePercent: +e.target.value })} hint="Ex : 80 pour 80%" />
+            )}
+            <Input type="number" step="0.5" label="Heures par semaine (calculé)" value={weeklyHours.toFixed(1)} readOnly className="bg-slate-50" hint="Calculé automatiquement depuis le planning hebdomadaire" />
+            <Input type="number" step="0.01" label="Heures par mois (calculé)" value={(weeklyHours * 52 / 12).toFixed(2)} readOnly className="bg-slate-50" hint="= heures hebdo × 52 ÷ 12" />
             <Select label="Manager (valideur des congés)" value={data.managerId} onChange={(e) => setData({ ...data, managerId: e.target.value })}>
               <option value="">—</option>
               {employees.map((e) => <option key={e.id} value={e.id}>{e.firstName} {e.lastName} — {e.jobTitle}</option>)}
