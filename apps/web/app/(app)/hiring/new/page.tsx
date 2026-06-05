@@ -65,7 +65,7 @@ export default function NewHirePage() {
     api.get<any[]>('/employees').then(setEmployees).catch(() => {});
   }, []);
 
-  const weeklyHours = Object.values(data.schedule).reduce((sum, day: any) => {
+  const weeklyHours = Object.values(data.schedule).reduce((sum: number, day: any) => {
     if (!day.start || !day.end) return sum;
     const [sh, sm] = day.start.split(':').map(Number);
     const [eh, em] = day.end.split(':').map(Number);
